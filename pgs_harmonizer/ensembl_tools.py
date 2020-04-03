@@ -1,5 +1,4 @@
 import requests
-import pandas
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 
@@ -22,11 +21,11 @@ class VariantResult:
                 bp.append(mapping['start'])
                 chrom.append(mapping['seq_region_name'])
         if len(bp) == 1:
-            return chrom[0], bp[0]
+            return chrom[0], bp[0], 'Mapped (rsID)'
         elif len(bp) > 1 and all_same(bp):
-            return chrom[0], bp[0]  # "AMBIGUOUS"
+            return chrom[0], bp[0], 'Mapped (rsID)'  # "AMBIGUOUS"
         else:
-            return None, None  # to catch those where they only map to a patch
+            return None, None, None  # to catch those where they only map to a patch
 
 def all_same(items):
     return all(x == items[0] for x in items)

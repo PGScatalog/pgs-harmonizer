@@ -1,4 +1,4 @@
-# pgs-harmoniser
+# pgs-harmonizer
 A pipeline to format and harmonize [Polygenic Score (PGS) Catalog Scoring Files](http://www.pgscatalog.org/downloads/#dl_ftp) 
 within and between different genome builds. 
 
