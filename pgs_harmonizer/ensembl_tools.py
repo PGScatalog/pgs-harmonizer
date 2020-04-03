@@ -27,6 +27,10 @@ class VariantResult:
         else:
             return None, None, None  # to catch those where they only map to a patch
 
+    def synonyms(self):
+        return self.json_result['synonyms']
+
+
 def all_same(items):
     return all(x == items[0] for x in items)
 
@@ -61,7 +65,10 @@ def ensembl_post(rsid_list, build = 'GRCh38'):
         try:
             r = session.post(url + '/variation/homo_sapiens', headers=headers, json=payload)
             for i,j in r.json().items():
-                results[i] = VariantResult(i, j)
+                v = VariantResult(i, j)
+                results[i] = v
+                for syn in v.synonyms():
+                    results[syn] = v
         except ConnectionError as ce:
             print(ce)
     return(results)

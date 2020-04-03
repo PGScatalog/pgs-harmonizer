@@ -38,12 +38,12 @@ class liftover:
         self.chain = LiftOver(self.build_from, self.build_to)
 
     def lift(self, chr, pos):
-        lifted = self.chain.convert_coordinate('chr{}'.format(str(chr)), int(pos))
+        lifted = self.chain.convert_coordinate('chr{}'.format(str(chr)), int(pos)) # ToDo figure out whether this step should be adjusted for 0/1 indexing?
         if lifted is not None:
             if len(lifted) == 1:
-                return lifted[0][0], int(lifted[0][1]), 'Mapped (liftover)'
+                return lifted[0][0][3:], int(lifted[0][1]), 'Mapped (liftover)'
             if len(lifted) > 1:
-                return lifted[0][0], int(lifted[0][1]), 'Mapped (liftover !first result!)'
+                return lifted[0][0][3:], int(lifted[0][1]), 'Mapped (liftover !first result!)'
         else:
             return None, int(), None
 
