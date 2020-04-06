@@ -4,22 +4,28 @@ within and between different genome builds.
 
 
 ## Requirements
-- Python packages: requests, pandas
+- Python packages: requests, pandas, pyliftover
 
 
-## pseudocode (adapted from GWAS Catalog)
-<pre>format PGS Scoring File (e.g. headers)
+## pseudocode (adapted from GWAS Catalog [README](https://github.com/EBISPOT/sum-stats-formatter/blob/master/harmonisation/README.md))
+**Implemented**:
+<pre>READ/PARSE PGS Scoring File and headers
 
 FOR each variant in file
     IF RSID maps to genomic location in Ensembl THEN
         Update locations based on Ensembl mapping
+        IF RSID != original RSID THEN
+            Provide new harmonized rsID (hm_rsID)
     ELIF can liftover locations to current build THEN
         liftover locations to current build
     ELSE
-        *flag* variant
+        *flag* variant and provide original mappings in "unharmonized column" as dictionary
     ENDIF
 ENDFOR
+</pre>
 
+**Unimplemented**:
+<pre>
 FOR each non-palindromic variant
     check orientation (query Ensembl reference VCF with chr:bp, effect and other alleles)
 ENDFOR
@@ -27,7 +33,7 @@ ENDFOR
 summarise the orientation of the variants: outcomes are ‘forward’, ‘reverse’ or ‘mixed’
 
 IF ‘mixed’ THEN
-    *flag* palindromic variants
+    remove palindromic variants
 ELSE
     proceed with all variants (including palindromic snps) assuming consensus orientation
 ENDIF

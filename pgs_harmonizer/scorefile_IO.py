@@ -1,6 +1,5 @@
 import pandas as pd
 
-
 remap_header = {
     'PGS ID' : 'pgs_id',
     'Reported Trait' : 'trait_reported',
@@ -9,7 +8,6 @@ remap_header = {
     'PGP ID' : 'pgp_id',
     'Citation' : 'citation'
 } # ToDo remove once Scoring File headers are fixed
-
 
 def read_ScoreFile(loc_scorefile):
     if loc_scorefile.endswith('.gz'):
