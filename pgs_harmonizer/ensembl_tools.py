@@ -1,4 +1,5 @@
 import requests
+import time
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 
@@ -49,7 +50,7 @@ def ensembl_post(rsid_list, build = 'GRCh38'):
 
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
-    ensembl_adapter = HTTPAdapter(max_retries=3)
+    ensembl_adapter = HTTPAdapter(max_retries=3) # ToDo add handler to handle retry-after header
     session = requests.Session()
 
     url = "https://rest.ensembl.org"
@@ -64,12 +65,17 @@ def ensembl_post(rsid_list, build = 'GRCh38'):
         payload = {'ids': c_ids }
         try:
             r = session.post(url + '/variation/homo_sapiens', headers=headers, json=payload)
-            for i,j in r.json().items():
-                v = VariantResult(i, j)
-                results[i] = v
-                for syn in v.synonyms():
-                    results[syn] = v
+            if 'Retry-After' in r.headers:
+                retry = r.headers['Retry-After']
+                time.sleep(float(retry))  # pragma: no cover
+                r = session.post(url + '/variation/homo_sapiens', headers=headers, json=payload)
+            else:
+                for i,j in r.json().items():
+                    v = VariantResult(i, j) #Class object
+                    results[i] = v
+                    for syn in v.synonyms():
+                        results[syn] = v
         except ConnectionError as ce:
             print(ce)
-    return(results)
+    return results
 

@@ -34,7 +34,7 @@ class liftover:
 
     def GetChain(self):
         '''Downloads the chain from UCSC '''
-        self.chain_name = '{} to {}'.format(self.build_from, self.build_to)
+        self.chain_name = 'UCSC: {} to {}'.format(self.build_from, self.build_to)
         self.chain = LiftOver(self.build_from, self.build_to)
 
     def lift(self, chr, pos):
@@ -44,8 +44,10 @@ class liftover:
                 return lifted[0][0][3:], int(lifted[0][1]), 'Mapped (liftover)'
             if len(lifted) > 1:
                 return lifted[0][0][3:], int(lifted[0][1]), 'Mapped (liftover !first result!)'
+            else:
+                return None, None, 'Unable to lift'
         else:
-            return None, int(), None
+            return chr, None, 'Unable to lift'
 
 
 
