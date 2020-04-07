@@ -24,6 +24,15 @@ FOR each variant in file
 ENDFOR
 </pre>
 
+     +----+--------------------------------------------------------------+
+     |Code|Description of harmonisation process                          |
+     +----+--------------------------------------------------------------+
+     |0   |Author-reported variant information                           |
+     |1   |Mapped by rsID                                                |
+     |2   |Lifted over by position                                       |
+     |3   |Lifted over by position (first result                         |
+     +----+--------------------------------------------------------------+
+
 **Unimplemented**:
 <pre>
 FOR each non-palindromic variant
@@ -45,16 +54,16 @@ FOR each remaining variant:
     remove if variant_id, p_value, base_pair_location, chromosome are invalid
 ENDFOR
 </pre>
-### Related resources
-#### OpenTargets [GWAS summary statistics harmoniser](https://github.com/opentargets/genetics-sumstat-harmoniser)
+## Related resources
+### OpenTargets [GWAS summary statistics harmoniser](https://github.com/opentargets/genetics-sumstat-harmoniser)
 - Harmonization flowchart : https://github.com/opentargets/genetics-sumstat-harmoniser/blob/master/flowchart_v3.svg
-#### GWAS Catalog [Summary Statistics harmonisation](https://github.com/EBISPOT/sum-stats-formatter/tree/master/harmonisation)
+### GWAS Catalog [Summary Statistics harmonisation](https://github.com/EBISPOT/sum-stats-formatter/tree/master/harmonisation)
 - Slightly different but uses the OpenTargets code/pipeline
-#### Liftover tools
+### Liftover tools
 - UCSC liftover tools 
 - [pyliftover](https://pypi.org/project/pyliftover/) - code: https://github.com/konstantint/pyliftover
 
 ### ENSEMBL APIs
-### Variation post (used to find location by rsID):
+### Variation POST (used to find location by rsID):
 - GRCh38 (Current release): https://rest.ensembl.org/documentation/info/variation_post
 - GRCh37 (Past release): http://grch37.rest.ensembl.org/documentation/info/variation_post

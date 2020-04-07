@@ -22,11 +22,11 @@ class VariantResult:
                 bp.append(mapping['start'])
                 chrom.append(mapping['seq_region_name'])
         if len(bp) == 1:
-            return chrom[0], bp[0], 'Mapped (rsID)'
+            return chrom[0], bp[0], 1, self.id
         elif len(bp) > 1 and all_same(bp):
-            return chrom[0], bp[0], 'Mapped (rsID)'  # "AMBIGUOUS"
+            return chrom[0], bp[0], 1, self.id  # "AMBIGUOUS"
         else:
-            return None, None, None  # to catch those where they only map to a patch
+            return None, None, None, None  # to catch those where they only map to a patch
 
     def synonyms(self):
         return self.json_result['synonyms']
