@@ -31,6 +31,7 @@ ENDFOR
      |1   |Mapped by rsID                                                |
      |2   |Lifted over by position                                       |
      |3   |Lifted over by position (first result                         |
+     |-   |Unable to map the variant                                     |
      +----+--------------------------------------------------------------+
 
 **Unimplemented**:
