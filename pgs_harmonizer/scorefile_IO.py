@@ -64,6 +64,7 @@ class WriteHarmonized:
 
         hm_info = {}
         if hm[2] is None:
+            hm[2] = '-'
             hm_info['original_build'] = build
             for c in self.hm_fields:
                 f = v.get(c)
