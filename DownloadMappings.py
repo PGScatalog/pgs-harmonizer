@@ -4,7 +4,7 @@ download_chains = False
 
 download_vcf = True
 vcf_builds = ['GRCh37', 'GRCh38']
-vcf_chrs = ['1', '2', '6']
+vcf_chrs = list(range(1,23)) + ['X', 'Y', 'MT']
 
 ensembl_ftp = ftplib.FTP("ftp.ensembl.org")
 ensembl_ftp.login()
@@ -31,8 +31,6 @@ if download_vcf:
                     ensembl_ftp.retrbinary('RETR {}'.format(vcf_loc_chr), lf.write)
                 # Download index .csi / .tbi
                 fn_vcf = 'homo_sapiens-chr{}.vcf.gz.csi'.format(chr)
-                if build == 'GRCh37':
-                    fn_vcf = 'homo_sapiens-chr{}.vcf.gz.tbi'.format(chr)
                 vcf_loc_chr = vcf_loc + fn_vcf
                 with open("./map/vcf_ref/{}/{}".format(build, fn_vcf), 'wb') as lf:
                     ensembl_ftp.retrbinary('RETR {}'.format(vcf_loc_chr), lf.write)
