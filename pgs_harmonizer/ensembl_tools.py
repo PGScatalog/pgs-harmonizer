@@ -79,3 +79,21 @@ def ensembl_post(rsid_list, build = 'GRCh38'):
             print(ce)
     return results
 
+def clean_rsIDs(raw_rslist):
+    cln_rslist = set()
+    for x in raw_rslist:
+        if type(x) is str and x.startswith('rs'):
+            if '_x_' in x:
+                x = [y.strip() for y in x.split('_x_')]
+            elif ';' in x:
+                x = [y.strip() for y in x.split(';')]
+            elif ',' in x:
+                x = [y.strip() for y in x.split(',')]
+            else:
+                cln_rslist.add(x)
+
+            if type(x) == list:
+                for i in x:
+                    if i.startswith('rs'):
+                        cln_rslist.add(i)
+    return(list(cln_rslist))

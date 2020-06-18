@@ -1,12 +1,12 @@
-from pgs_harmonizer.ensembl_tools import ensembl_post
+from pgs_harmonizer.ensembl_tools import ensembl_post, clean_rsIDs
 from pgs_harmonizer.scorefile_IO import read_scorefile, WriteHarmonized
 from pgs_harmonizer.liftover_tools import liftover
 import gzip
 import sys
 
 # Globals
-chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y']
-target_build = 'GRCh38'
+chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
+target_build = sys.argv[2]
 
 # Inputs
 input_id = sys.argv[1]
@@ -39,7 +39,7 @@ if mappable:
     else:
         if 'rsID' in df_scoring.columns:
             print('Retrieving rsID mappings from ENSEMBL API')
-            mapping_ensembl = ensembl_post([x for x in list(set(df_scoring['rsID'])) if type(x) is str and x.startswith('rs')], target_build) #retireve the SNP info from ENSEMBL
+            mapping_ensembl = ensembl_post(clean_rsIDs(list(df_scoring['rsID'])), target_build) #retireve the SNP info from ENSEMBL
         else:
             mapping_ensembl = None
 
@@ -51,7 +51,7 @@ if mappable:
         mapped_rsID = 0
         mapped_lift = 0
         mapped_nope = 0
-        with gzip.open('./hm_coords/{}_hm.txt.gz'.format(header['pgs_id']), 'wt') as hm_out:
+        with gzip.open('./hm_coords/{}_hm{}.txt.gz'.format(header['pgs_id'], target_build), 'wt') as hm_out:
             hm_formatter = WriteHarmonized(df_scoring.columns)
             hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
             for i, v in df_scoring.iterrows():
