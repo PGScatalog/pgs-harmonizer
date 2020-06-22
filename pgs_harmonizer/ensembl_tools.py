@@ -2,12 +2,17 @@ import requests
 import time
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
-
+import pandas as pd
 
 class VariantResult:
     def __init__(self, id, json_result):
         self.id = id
         self.json_result = json_result
+
+        self.chrom = None
+        self.bp = None
+        self.alleles = None
+        self.hm_code = None
 
     def select_canonical_data(self, chromosomes):
         '''To identify the best mapping (adapted from GWAS Catalog)'''
@@ -16,15 +21,19 @@ class VariantResult:
 
         chrom = []
         bp = []
+        alleles = []
         for mapping in mapped_data:
             if mapping['seq_region_name'] in chromosomes:
                 # print(mapping['seq_region_name'], mapping['start'])
                 bp.append(mapping['start'])
                 chrom.append(mapping['seq_region_name'])
-        if len(bp) == 1:
+                alleles.append(mapping['allele_string'].split('/'))
+        if (len(bp) == 1) or (len(bp) > 1 and all_same(bp)):
+            self.chrom = chrom[0]
+            self.bp = bp[0]
+            self.alleles = alleles[0]
+            self.hm_code = 1
             return chrom[0], bp[0], 1, self.id
-        elif len(bp) > 1 and all_same(bp):
-            return chrom[0], bp[0], 1, self.id  # "AMBIGUOUS"
         else:
             return None, None, None, None  # to catch those where they only map to a patch
 
@@ -41,7 +50,7 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 def ensembl_post(rsid_list, build = 'GRCh38'):
-    '''Retrieve rsID info from ENSEMBL Variation API'''
+    """Retrieve rsID info from ENSEMBL Variation API"""
 
     # Assign API URL/settings
     valid_build = ['GRCh37', 'GRCh38']
@@ -80,6 +89,8 @@ def ensembl_post(rsid_list, build = 'GRCh38'):
     return results
 
 def clean_rsIDs(raw_rslist):
+    """Takes a list of values, removes anything that doesn't look like an rsID and splits any variants that
+    are haplotypes, combinations, or interactions"""
     cln_rslist = set()
     for x in raw_rslist:
         if type(x) is str and x.startswith('rs'):
@@ -97,3 +108,22 @@ def clean_rsIDs(raw_rslist):
                     if i.startswith('rs'):
                         cln_rslist.add(i)
     return(list(cln_rslist))
+
+def parse_var2location(loc_var2location_results):
+    """Reads results of var2location.pl mapping into the same class as the ENSEMBL API results"""
+    mappings = pd.read_csv(loc_var2location_results, sep = '\t',
+                           names=['query_rsid', 'mapped_rsid', 'allele_string', 'seq_region_name', 'start', 'end'])
+
+    results = {}
+
+    #Loop through results and parse to Variant
+    for query_rsid, maps in mappings.groupby('query_rsid'):
+        q_json = {'name': maps.iloc[0,1], 'mappings': []}
+        syn = list(set(maps['query_rsid']).union(maps['mapped_rsid']))
+        for m in maps.iterrows():
+            q_json['mappings'].append(dict(m[1]))
+        v = VariantResult(maps.iloc[0,1], q_json)
+        for s in syn:
+            results[s] = v
+
+    return results

@@ -60,6 +60,8 @@ class WriteHarmonized:
         self.cols_order += ['hm_code', 'hm_info']
 
     def format_line(self, v, hm, build):
+        if type(hm) == tuple:
+            hm = list(hm)
         v = dict(v)
 
         hm_info = {}
