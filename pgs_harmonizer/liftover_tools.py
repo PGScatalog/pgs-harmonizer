@@ -29,8 +29,12 @@ class liftover:
                 raise Exception('Unknown DESTINATION genome build. The value was: {}'.format(build_from))
             else:
                 self.build_to = build_mapped
+
         # Download/Source the Chain from UCSC
-        self.GetChain()
+        if self.build_from != self.build_to:
+            self.GetChain()
+        else:
+            self.chain = None
 
     def GetChain(self):
         '''Downloads the chain from UCSC '''

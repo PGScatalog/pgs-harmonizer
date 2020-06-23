@@ -10,6 +10,7 @@ remap_header = {
 } # ToDo remove once Scoring File headers are fixed
 
 def read_scorefile(loc_scorefile):
+    """Loads PGS Catalog Scoring file and parses the header into a dictionary"""
     if loc_scorefile.endswith('.gz'):
         import gzip
         f = gzip.open(loc_scorefile,'rt')
@@ -33,12 +34,12 @@ def read_scorefile(loc_scorefile):
 
     return(header, df_scoring)
 
-class WriteHarmonized:
-    '''Class to choose which columns will be added, and in what order to the output.'''
+class Harmonizer:
+    """Class to select and harmonize variant locations in a PGS Scoring file."""
     def __init__(self, cols):
-        '''Used to select the columns and ordering of the output file'''
+        '''Used to select the columns and ordering of the output PGS Scoring file'''
         self.cols_previous = cols
-        self.hm_fields = ['rsID', 'chr_name', 'effect_allele', 'reference_allele']
+        self.hm_fields = ['rsID', 'chr_name', 'chr_position', 'effect_allele', 'reference_allele']
 
         self.cols_order = ['chr_name', 'chr_position']
 
@@ -60,19 +61,21 @@ class WriteHarmonized:
         self.cols_order += ['hm_code', 'hm_info']
 
     def format_line(self, v, hm, build):
+        """Method that takes harmonzied variant location and compares it with the old information.
+        Outputs any changes to an hm_info dictionary"""
         if type(hm) == tuple:
             hm = list(hm)
         v = dict(v)
 
         hm_info = {}
         if hm[2] is None:
-            hm[2] = '-'
+            v['hm_code'] = '-1' # Unable to map the variant
             hm_info['original_build'] = build
             for c in self.hm_fields:
                 f = v.get(c)
                 if f:
                     hm_info[c] = f
-                    v[c] = '' # insert blank, or '-' ?
+                    v[c] = ''
         else:
             v['chr_name'] = hm[0]
             v['chr_position'] = hm[1]
@@ -81,6 +84,10 @@ class WriteHarmonized:
                 if hm[3] != v['rsID']:
                     hm_info['previous_rsID'] = v['rsID']
                     v['rsID'] = hm[3]
+            if hm[2] == 2: #mapped by liftover
+                if 'rsID' in v:
+                    hm_info['previous_rsID'] = v['rsID']
+                    v['rsID'] = ''
 
         # Create output
         o = []
