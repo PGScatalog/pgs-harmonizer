@@ -4,7 +4,9 @@ from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 import pandas as pd
 
+
 class VariantResult:
+    """Class to parse the 'mapping 'information from ENSEMBL Variation"""
     def __init__(self, id, json_result):
         self.id = id
         self.json_result = json_result
@@ -15,7 +17,7 @@ class VariantResult:
         self.hm_code = None
 
     def select_canonical_data(self, chromosomes):
-        '''To identify the best mapping (adapted from GWAS Catalog)'''
+        """To identify the best mapping (adapted from GWAS Catalog)"""
 
         mapped_data = self.json_result['mappings']
 
@@ -44,10 +46,12 @@ class VariantResult:
 def all_same(items):
     return all(x == items[0] for x in items)
 
+
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
 
 def ensembl_post(rsid_list, build = 'GRCh38'):
     """Retrieve rsID info from ENSEMBL Variation API"""
@@ -116,7 +120,7 @@ def parse_var2location(loc_var2location_results):
 
     results = {}
 
-    #Loop through results and parse to Variant
+    # Loop through results and parse to Variant
     for query_rsid, maps in mappings.groupby('query_rsid'):
         q_json = {'name': maps.iloc[0,1], 'mappings': []}
         syn = list(set(maps['query_rsid']).union(maps['mapped_rsid']))
