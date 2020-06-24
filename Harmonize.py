@@ -1,9 +1,14 @@
 import argparse
 from pgs_harmonizer.ensembl_tools import ensembl_post, clean_rsIDs, parse_var2location
-from pgs_harmonizer.scorefile_IO import read_scorefile, Harmonizer
+from pgs_harmonizer.harmonize import read_scorefile, Harmonizer
 from pgs_harmonizer.liftover_tools import liftover
 import os, sys, gzip
 
+
+# Globals
+chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
+
+# Inputs
 
 parser = argparse.ArgumentParser(description='Harmonize a PGS Catalog Scoring file (PGS######.txt.gz) to a specific genome build.')
 parser.add_argument("-id", dest="pgs_id",
@@ -15,14 +20,9 @@ parser.add_argument("-loc_scorefiles", dest="loc_scorefiles",
                     help="Root directory where the PGS files are located, otherwise assumed to be in: ../pgs_ScoringFiles/", metavar="DIR",
                     default='../pgs_ScoringFiles/')
 parser.add_argument('--var2location', action='store_true')
-
-
 args = parser.parse_args()
 
-# Globals
-chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
-
-# Inputs
+# Locations of relevant files
 if 'loc_scorefiles' in args:
     if not args.loc_scorefiles.endswith('/'):
         args.loc_scorefiles += '/'
@@ -30,6 +30,7 @@ if 'loc_scorefiles' in args:
 else:
     loc_scorefile = '../pgs_ScoringFiles/{}.txt.gz'.format(args.pgs_id)
 
+# Read Score File
 print('Reading Score File')
 header, df_scoring  = read_scorefile(loc_scorefile)
 print('PGS ID: {} | Build: {}'.format(header['pgs_id'], header['genome_build']))
@@ -79,7 +80,11 @@ if mappable:
         for i, v in df_scoring.iterrows():
             if mapping_ensembl and mapping_ensembl.get(v['rsID']):
                 v_map = mapping_ensembl.get(v['rsID'])
-                hm = v_map.select_canonical_data(chromosomes)
+                hm = list(v_map.select_canonical_data(chromosomes))
+                if 'reference_allele' in v:
+                    hm[:3] = v_map.check_alleles(ref=v['reference_allele'], eff=v['effect_allele'])
+                else:
+                    hm[:3] = v_map.check_alleles(eff=v['effect_allele'])
                 mapped_rsID += 1
             elif 'chr_name' and 'chr_position' in df_scoring.columns:
                 if build_map.chain:

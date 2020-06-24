@@ -30,8 +30,10 @@ ENDFOR
      |0   | Author-reported variant information                          |
      |1   | Mapped by rsID                                               |
      |2   | Lifted over by position                                      |
-     |3   | Lifted over by position (first result)                       |
-     |-1   | Unable to map the variant                                    |
+     |3   | Lifted over by position [multiple possible locations]        |
+     |-1  | Unable to map the variant                                    |
+     |-2  | Mapped by rsID [allele(s) map to reverse strand]             |
+     |-3  | Mapped by rsID [alleles do not match ENSEMBL]                |
      +----+--------------------------------------------------------------+
 
 **Unimplemented**:

@@ -48,10 +48,9 @@ class Harmonizer:
             self.cols_order.append('rsID')
 
         # Check if there is a reference allele will be added
+        self.cols_order.append('effect_allele')
         if 'reference_allele' in self.cols_previous:
-            self.cols_order += ['effect_allele', 'reference_allele']
-        else:
-            self.cols_order.append('effect_allele')
+            self.cols_order.append('reference_allele')
 
         # Check which other columns need to be added
         for c in self.cols_previous:
@@ -61,21 +60,32 @@ class Harmonizer:
         self.cols_order += ['hm_code', 'hm_info']
 
     def format_line(self, v, hm, build):
-        """Method that takes harmonzied variant location and compares it with the old information.
+        """Method that takes harmonized variant location and compares it with the old information.
         Outputs any changes to an hm_info dictionary"""
         if type(hm) == tuple:
             hm = list(hm)
         v = dict(v)
 
         hm_info = {}
-        if hm[2] is None:
-            v['hm_code'] = '-1' # Unable to map the variant
+        if (hm[2] is None) or (hm[2] < 0):
+            if hm[2] is None:
+                v['hm_code'] = '-1' # Unable to map the variant
+            else:
+                v['hm_code'] = hm[2] # Variant does not match ENSEMBL Variation
+
+            # Fill in the original mapping in 'hm_info' and remove the harmonized variant information from the column
             hm_info['original_build'] = build
             for c in self.hm_fields:
                 f = v.get(c)
                 if f:
                     hm_info[c] = f
                     v[c] = ''
+
+            # If the variant was lifted but the allele's don't match add the lifted over positions
+            if hm[0] != None:
+                hm_info['hm_chr'] = hm[0]
+            if hm[1] != None:
+                hm_info['hm_chr_position'] = hm[1]
         else:
             v['chr_name'] = hm[0]
             v['chr_position'] = hm[1]

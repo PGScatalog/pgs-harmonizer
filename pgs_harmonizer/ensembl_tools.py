@@ -4,6 +4,7 @@ from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 import pandas as pd
 
+reversecomplement = lambda x: ''.join([{'A':'T','C':'G','G':'C','T':'A'}[B] for B in x][::-1])
 
 class VariantResult:
     """Class to parse the 'mapping 'information from ENSEMBL Variation"""
@@ -13,8 +14,8 @@ class VariantResult:
 
         self.chrom = None
         self.bp = None
-        self.alleles = None
         self.hm_code = None
+        self.alleles = None
 
     def select_canonical_data(self, chromosomes):
         """To identify the best mapping (adapted from GWAS Catalog)"""
@@ -33,11 +34,44 @@ class VariantResult:
         if (len(bp) == 1) or (len(bp) > 1 and all_same(bp)):
             self.chrom = chrom[0]
             self.bp = bp[0]
-            self.alleles = alleles[0]
             self.hm_code = 1
-            return chrom[0], bp[0], 1, self.id
-        else:
-            return None, None, None, None  # to catch those where they only map to a patch
+            self.alleles = alleles[0]
+
+        return self.chrom, self.bp, self.hm_code, self.alleles
+
+    def check_alleles(self, ref = None, eff = None):
+        """Check if the original scoring file's alleles match the ENSEMBL rsID mapping"""
+        hm_consistent = []
+        hm_revcomp = []
+
+        # Check Effect Allele
+        if eff in self.alleles:
+            hm_consistent.append('eff')
+        elif eff in map(reversecomplement, self.alleles):
+            hm_revcomp.append('eff')
+
+        # Check reference allele
+        if ref is not None:
+            if ref in self.alleles:
+                hm_consistent.append('ref')
+            elif ref in map(reversecomplement, self.alleles):
+                hm_revcomp.append('ref')
+
+        # Check the alleles
+        if ref is None: # Just check effect allele
+            if 'eff' in hm_revcomp:
+                self.hm_code = -2
+            elif 'eff' not in hm_consistent:
+                self.hm_code = -3
+        else: # Check both alleles
+            if 'eff' and 'ref' in hm_consistent:
+                self.hm_code = 1
+            elif 'eff' and 'ref' in hm_revcomp:
+                self.hm_code = -2
+            else:
+                self.hm_code = -3
+
+        return self.chrom, self.bp, self.hm_code
 
     def synonyms(self):
         return self.json_result['synonyms']
