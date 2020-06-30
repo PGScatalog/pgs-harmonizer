@@ -6,7 +6,7 @@ import pandas as pd
 
 reversecomplement = lambda x: ''.join([{'A':'T','C':'G','G':'C','T':'A'}[B] for B in x][::-1])
 
-class VariantResult:
+class VariationResult:
     """Class to parse the 'mapping 'information from ENSEMBL Variation"""
     def __init__(self, id, json_result):
         self.id = id
@@ -118,7 +118,7 @@ def ensembl_post(rsid_list, build = 'GRCh38'):
                 r = session.post(url + '/variation/homo_sapiens', headers=headers, json=payload)
             else:
                 for i,j in r.json().items():
-                    v = VariantResult(i, j) #Class object
+                    v = VariationResult(i, j) #Class object
                     results[i] = v
                     for syn in v.synonyms():
                         results[syn] = v
@@ -160,7 +160,7 @@ def parse_var2location(loc_var2location_results):
         syn = list(set(maps['query_rsid']).union(maps['mapped_rsid']))
         for m in maps.iterrows():
             q_json['mappings'].append(dict(m[1]))
-        v = VariantResult(maps.iloc[0,1], q_json)
+        v = VariationResult(maps.iloc[0,1], q_json)
         for s in syn:
             results[s] = v
 
