@@ -13,13 +13,15 @@ within and between different genome builds.
 
 FOR each variant in file
     IF RSID maps to genomic location in Ensembl THEN
-        Update locations based on Ensembl mapping
+        update locations based on Ensembl mapping
         IF RSID != original RSID THEN
-            Provide new harmonized rsID (hm_rsID)
-    ELIF can liftover locations to current build THEN
+            update rsID (provide original rsID in hm_info)
+        check and flag if the alleles are consistent with the API
+    ELIF Able to liftover locations to current build THEN
         liftover locations to current build
+        check and flag if the alleles are consistent with the ENSEMBL VCF
     ELSE
-        *flag* variant and provide original mappings in "unharmonized column" as dictionary
+        *flag* variant and provide original mappings in hm_info column as dictionary
     ENDIF
 ENDFOR
 </pre>
@@ -28,35 +30,16 @@ ENDFOR
      |Code|Description of harmonisation process                          |
      +----+--------------------------------------------------------------+
      |0   | Author-reported variant information                          |
-     |1   | Mapped by rsID                                               |
+     |1   | Mapped by rsID [allele(s) match ENSEMBL API]                 |
      |2   | Lifted over by position                                      |
-     |3   | Lifted over by position [multiple possible locations]        |
+     |3   | Lifted over by position [multiple mapped locations]          |
      |-1  | Unable to map the variant                                    |
      |-2  | Mapped by rsID [allele(s) map to reverse strand]             |
      |-3  | Mapped by rsID [alleles do not match ENSEMBL]                |
+     |-4  | Strands flipped [reverse complement alleles exist in VCF]    |
+     |-5  | Variant doesn't exist in the ENSEMBL VCF                     |
      +----+--------------------------------------------------------------+
 
-**Unimplemented**:
-<pre>
-FOR each non-palindromic variant
-    check orientation (query Ensembl reference VCF with chr:bp, effect and other alleles)
-ENDFOR
-
-summarise the orientation of the variants: outcomes are ‘forward’, ‘reverse’ or ‘mixed’
-
-IF ‘mixed’ THEN
-    remove palindromic variants
-ELSE
-    proceed with all variants (including palindromic snps) assuming consensus orientation
-ENDIF
-
-FOR each remaining variant:
-    get rsid and update variant_id
-    check orientation of variant against Ensembl reference VCF
-    orientate variant to reference (can flip alleles, betas, ORs, CIs allele frequencies)
-    remove if variant_id, p_value, base_pair_location, chromosome are invalid
-ENDFOR
-</pre>
 ## Related resources
 ### OpenTargets [GWAS summary statistics harmoniser](https://github.com/opentargets/genetics-sumstat-harmoniser)
 - Harmonization flowchart : https://github.com/opentargets/genetics-sumstat-harmoniser/blob/master/flowchart_v3.svg

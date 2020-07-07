@@ -1,12 +1,9 @@
 import argparse
 from pgs_harmonizer.ensembl_tools import ensembl_post, clean_rsIDs, parse_var2location
-from pgs_harmonizer.harmonize import read_scorefile, Harmonizer
+from pgs_harmonizer.harmonize import *
 from pgs_harmonizer.liftover_tools import liftover
+from pgs_harmonizer.vcf_tools import *
 import os, sys, gzip
-
-
-# Globals
-chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
 
 # Inputs
 
@@ -78,21 +75,31 @@ if mappable:
         hm_formatter = Harmonizer(df_scoring.columns)
         hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
         for i, v in df_scoring.iterrows():
-            if mapping_ensembl and mapping_ensembl.get(v['rsID']):
+            if mapping_ensembl:
                 v_map = mapping_ensembl.get(v['rsID'])
-                hm = list(v_map.select_canonical_data(chromosomes))
-                if 'reference_allele' in v:
-                    hm[:3] = v_map.check_alleles(ref=v['reference_allele'], eff=v['effect_allele'])
-                else:
-                    hm[:3] = v_map.check_alleles(eff=v['effect_allele'])
-                mapped_rsID += 1
+                if v_map is not None:
+                    hm = list(v_map.select_canonical_data(chromosomes))
+                    # Check if this  matches the ENSEMBL annotation
+                    if 'reference_allele' in v:
+                        hm[:3] = v_map.check_alleles(ref=v['reference_allele'], eff=v['effect_allele'])
+                    else:
+                        hm[:3] = v_map.check_alleles(eff=v['effect_allele'])
+                    mapped_rsID += 1
             elif 'chr_name' and 'chr_position' in df_scoring.columns:
                 if build_map.chain:
-                    hm = build_map.lift(v['chr_name'], v['chr_position']) # Mapping by liftover
+                    hm = list(build_map.lift(v['chr_name'], v['chr_position'])) # Mapping by liftover
                     mapped_lift += 1
                 else:
-                    hm = (v['chr_name'], v['chr_position'], 0)
+                    hm = [v['chr_name'], v['chr_position'], 0]
                     mapped_author += 1
+
+                # ToDo Check the VCF for variant
+                if hm[2] is not None:
+                    v_records = VCFResult(chr=hm[0], pos=hm[1], build=args.target_build)
+                    if 'reference_allele' in v:
+                        hm[2] = v_records.check_alleles(ref=v['reference_allele'], eff=v['effect_allele'])
+                    else:
+                        hm[2] = v_records.check_alleles(eff=v['effect_allele'])
             else:
                 hm = (None, None, None)
                 mapped_unable += 1

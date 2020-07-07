@@ -3,8 +3,8 @@ import time
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 import pandas as pd
+from pgs_harmonizer.harmonize import reversecomplement
 
-reversecomplement = lambda x: ''.join([{'A':'T','C':'G','G':'C','T':'A'}[B] for B in x][::-1])
 
 class VariationResult:
     """Class to parse the 'mapping 'information from ENSEMBL Variation"""

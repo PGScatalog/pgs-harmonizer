@@ -9,6 +9,11 @@ remap_header = {
     'Citation' : 'citation'
 } # ToDo remove once Scoring File headers are fixed
 
+
+chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
+
+reversecomplement = lambda x: ''.join([{'A':'T','C':'G','G':'C','T':'A'}[B] for B in x][::-1])
+
 def read_scorefile(loc_scorefile):
     """Loads PGS Catalog Scoring file and parses the header into a dictionary"""
     if loc_scorefile.endswith('.gz'):
