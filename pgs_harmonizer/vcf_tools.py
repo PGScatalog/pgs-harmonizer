@@ -13,7 +13,7 @@ class VCFResult:
 
     def check_alleles(self, eff, ref=None):
         """Check if this variant exists in the ENSEMBL VCF files"""
-        if self.vcf_query is None:
+        if self.vcf_result is None:
             return None
         else:
             # Collect variants that match or mismatch the VCF

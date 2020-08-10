@@ -37,6 +37,10 @@ def read_scorefile(loc_scorefile):
 
     df_scoring = pd.read_table(loc_scorefile, float_precision='round_trip', comment='#')
 
+
+    if 'chr_name' in df_scoring.columns:
+        df_scoring['chr_name'] = df_scoring['chr_name'].astype('str') # Asssert character in case there are only chr numbers
+
     return(header, df_scoring)
 
 class Harmonizer:
@@ -64,7 +68,7 @@ class Harmonizer:
 
         self.cols_order += ['hm_code', 'hm_info']
 
-    def format_line(self, v, hm, build):
+    def format_line(self, v, hm, build, rsid=None):
         """Method that takes harmonized variant location and compares it with the old information.
         Outputs any changes to an hm_info dictionary"""
         if type(hm) == tuple:
@@ -95,25 +99,21 @@ class Harmonizer:
             v['chr_name'] = hm[0]
             v['chr_position'] = hm[1]
             v['hm_code'] = hm[2]
-            if hm[2] == 1: #mapped by rsID
-                if hm[3] != v['rsID']:
+            if rsid is not None: #mapped by rsID
+                if rsid != v['rsID']:
                     hm_info['previous_rsID'] = v['rsID']
-                    v['rsID'] = hm[3]
-            if hm[2] == 2: #mapped by liftover
-                if 'rsID' in v:
-                    hm_info['previous_rsID'] = v['rsID']
-                    v['rsID'] = ''
+                    v['rsID'] = rsid
 
         # Create output
         o = []
         for c in self.cols_order:
-            if c =='hm_info':
+            if c == 'hm_info':
                 if len(hm_info) > 0:
                     o.append(repr(hm_info))
                 else:
                     o.append('')
             elif c in v:
-                o.append(str(v[c]))
+                o.append(str(v[c]).replace('nan', ''))
             else:
                 o.append('')
         return o

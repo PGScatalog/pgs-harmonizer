@@ -8,7 +8,6 @@ within and between different genome builds.
 
 
 ## pseudocode (adapted from GWAS Catalog [README](https://github.com/EBISPOT/sum-stats-formatter/blob/master/harmonisation/README.md))
-**Implemented**:
 <pre>READ/PARSE PGS Scoring File and headers
 
 FOR each variant in file

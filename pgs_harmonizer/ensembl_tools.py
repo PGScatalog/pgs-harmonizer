@@ -40,7 +40,8 @@ class VariationResult:
         return self.chrom, self.bp, self.hm_code, self.alleles
 
     def check_alleles(self, ref = None, eff = None):
-        """Check if the original scoring file's alleles match the ENSEMBL rsID mapping"""
+        """Check if the original scoring file's alleles match the ENSEMBL rsID mapping allele string
+        (NB: The allele string encoding of INDELs is different than the VCF allele notation)"""
         hm_consistent = []
         hm_revcomp = []
 
@@ -151,7 +152,7 @@ def parse_var2location(loc_var2location_results):
     """Reads results of var2location.pl mapping into the same class as the ENSEMBL API results"""
     mappings = pd.read_csv(loc_var2location_results, sep = '\t',
                            names=['query_rsid', 'mapped_rsid', 'allele_string', 'seq_region_name', 'start', 'end'])
-
+    mappings['seq_region_name'] = mappings['seq_region_name'].astype('str') # Asssert character in case there are only chr numbers
     results = {}
 
     # Loop through results and parse to Variant
