@@ -1,5 +1,5 @@
 from cyvcf2 import VCF
-from pgs_harmonizer.harmonize import reversecomplement, chromosomes
+from pgs_harmonizer.harmonize import reversecomplement,acceptable_alleles, chromosomes
 
 
 class VCFResult:
