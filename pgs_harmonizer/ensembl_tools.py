@@ -104,8 +104,8 @@ def ensembl_post(rsid_list, build = 'GRCh38'):
     url = "https://rest.ensembl.org"
     if build == 'GRCh37':
         url = "https://grch37.rest.ensembl.org"
-    else:
-        session.mount(url, ensembl_adapter)
+
+    session.mount(url, ensembl_adapter)
 
     results = {}
     # Loop throught the rsID list and add the results to a dictionary
