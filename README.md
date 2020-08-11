@@ -15,13 +15,14 @@ FOR each variant in file
         update locations based on Ensembl mapping
         IF RSID != original RSID THEN
             update rsID (provide original rsID in hm_info)
-        check and flag if the alleles are consistent with the API
     ELIF Able to liftover locations to current build THEN
         liftover locations to current build
-        check and flag if the alleles are consistent with the ENSEMBL VCF
     ELSE
         *flag* variant and provide original mappings in hm_info column as dictionary
     ENDIF
+    
+    Check and flag if the alleles are consistent with the ENSEMBL VCF
+    Write output
 ENDFOR
 </pre>
 
