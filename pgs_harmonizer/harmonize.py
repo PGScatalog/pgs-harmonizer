@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import json
 
 remap_header = {
     'PGS ID' : 'pgs_id',
@@ -117,7 +118,7 @@ class Harmonizer:
         for c in self.cols_order:
             if c == 'hm_info':
                 if len(hm_info) > 0:
-                    o.append(repr(hm_info))
+                    o.append(json.dumps(hm_info))
                 else:
                     o.append('')
             elif c in v:
