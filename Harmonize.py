@@ -1,7 +1,7 @@
 import argparse
 from pgs_harmonizer.ensembl_tools import ensembl_post, clean_rsIDs, parse_var2location
 from pgs_harmonizer.harmonize import *
-from pgs_harmonizer.liftover_tools import liftover
+from pgs_harmonizer.liftover_tools import liftover, map_release
 from pgs_harmonizer.vcf_tools import *
 import os, sys, gzip
 from collections import Counter
@@ -38,6 +38,14 @@ header, df_scoring  = read_scorefile(loc_scorefile)
 source_build = header['genome_build']
 if args.source_build is not None:
     source_build = args.source_build
+
+# Get consistent source build (e.g. NCBI/GRC)
+if source_build in map_release.keys():
+    source_build_mapped = source_build
+elif source_build in map_release.values():
+    for grc, hg in map_release.items():
+        if hg == source_build:
+            source_build_mapped = grc
 
 print('PGS ID: {} | Build: {}'.format(header['pgs_id'], source_build))
 print('Number of variants (score file lines) = {}'.format(header['variants_number']))
@@ -95,7 +103,7 @@ if mappable:
         for i, v in df_scoring.iterrows():
             current_rsID = None
 
-            hm = (None, None, None)
+            hm = [None, None, None]
             if mapping_ensembl:
                 v_map = mapping_ensembl.get(v['rsID'])
                 if v_map is not None:
@@ -113,6 +121,8 @@ if mappable:
                 if build_map.chain:
                     hm = list(build_map.lift(v['chr_name'], v['chr_position'])) # Mapping by liftover
                     mapped_counter['mapped_lift'] += 1
+                elif source_build_mapped == args.target_build:
+                    hm = [v['chr_name'], v['chr_position'], 0]  # author-reported
             if all([x == None for x in hm]):
                 mapped_counter['mapped_unable'] += 1
 
