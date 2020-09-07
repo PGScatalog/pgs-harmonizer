@@ -90,7 +90,6 @@ def chunks(lst, n):
 
 def ensembl_post(rsid_list, build = 'GRCh38'):
     """Retrieve rsID info from ENSEMBL Variation API"""
-
     # Assign API URL/settings
     valid_build = ['GRCh37', 'GRCh38']
     if build not in valid_build:

@@ -108,7 +108,7 @@ class Harmonizer:
             v['chr_name'] = hm[0]
             v['chr_position'] = hm[1]
             v['hm_code'] = hm[2]
-            if rsid is not None: #mapped by rsID
+            if rsid is not None: # mapped by rsID
                 if rsid != v['rsID']:
                     hm_info['previous_rsID'] = v['rsID']
                     v['rsID'] = rsid
