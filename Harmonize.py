@@ -18,8 +18,9 @@ parser.add_argument("-loc_scorefiles", dest="loc_scorefiles",
 parser.add_argument("-source_build", dest="source_build",
                     help="Source genome build [overwrites the scoring file header information]", metavar="BUILD",
                     default=None)
-parser.add_argument('--var2location',help='Uses the annotations from the var2location.pl script (ENSEMBL SQL connection)', action='store_true')
-parser.add_argument('--ignore_rsid',help='Ignores rsIDs and attempts to harmonize variants by liftover only', action='store_true')
+parser.add_argument('--var2location', help='Uses the annotations from the var2location.pl script (ENSEMBL SQL connection)', action='store_true')
+parser.add_argument('--addReferenceAllele', help='Adds the reference_allele(s) column for rsIDs that only have a recorded effect_allele', action='store_true')
+parser.add_argument('--ignore_rsid', help='Ignores rsIDs and attempts to harmonize variants by liftover only', action='store_true')
 parser.add_argument('--gzip',help='Writes gzipped harmonized output', action='store_true')
 args = parser.parse_args()
 
@@ -107,7 +108,13 @@ if mappable:
         hm_out = gzip.open(loc_hm_out, 'wt')
     else:
         hm_out = open(loc_hm_out, 'w')
-    hm_formatter = Harmonizer(df_scoring.columns)
+
+    # Check if extra columns (reference_allele) will need to be added
+    if args.addReferenceAllele:
+        hm_formatter = Harmonizer(list(df_scoring.columns) + ['reference_allele'])
+    else:
+        hm_formatter = Harmonizer(df_scoring.columns)
+
     hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
 
     #Loop through variants
@@ -120,6 +127,9 @@ if mappable:
             if v_map is not None:
                 hm = list(v_map.select_canonical_data(chromosomes))
                 current_rsID = v_map.id
+                if 'reference_allele' not in v and args.addReferenceAllele:
+                    # Add reference allele(s) based on ENSMEBL - provided the variant matches the allele list
+                    v['reference_allele'] = v_map.infer_reference_allele(v['effect_allele'])
                 mapped_counter['mapped_rsID'] += 1
             elif 'chr_name' and 'chr_position' in df_scoring.columns:
                 if source_build_mapped == args.target_build:
@@ -140,7 +150,7 @@ if mappable:
         # ToDo Revise harmonization codes
         if hm[2] is not None:
             v_records = VCFResult(chr=hm[0], pos=hm[1], build=args.target_build)
-            if 'reference_allele' in v:
+            if ('reference_allele' in v) and (pd.isnull(v['reference_allele']) is False) and (('/' in v['reference_allele']) is False):
                 hm[2] = v_records.check_alleles(ref=v['reference_allele'], eff=v['effect_allele'])
             else:
                 hm[2] = v_records.check_alleles(eff=v['effect_allele'])

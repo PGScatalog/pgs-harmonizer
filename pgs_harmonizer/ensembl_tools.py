@@ -3,6 +3,7 @@ import time
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 import pandas as pd
+from numpy import nan
 from pgs_harmonizer.harmonize import reversecomplement
 
 
@@ -73,6 +74,21 @@ class VariationResult:
                 self.hm_code = -3
 
         return self.chrom, self.bp, self.hm_code
+
+    def infer_reference_allele(self, eff):
+        """Try to infer the reference_allele. Report all possible reference alleles '/'-delimited"""
+        ref = nan
+        if eff in self.alleles:
+            MAJ = self.alleles[0]
+            MIN = self.alleles[1:]
+
+            if eff in MIN:
+                ref = MAJ
+            elif len(MIN) == 1:
+                ref = MIN[0]
+            else:
+                ref = '/'.join(MIN)
+        return ref
 
     def synonyms(self):
         return self.json_result['synonyms']
