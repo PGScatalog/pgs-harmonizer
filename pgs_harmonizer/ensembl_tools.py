@@ -163,10 +163,15 @@ def clean_rsIDs(raw_rslist):
                         cln_rslist.add(i)
     return(list(cln_rslist))
 
-def parse_var2location(loc_var2location_results):
+def parse_var2location(loc_var2location_results, rsIDs = None):
     """Reads results of var2location.pl mapping into the same class as the ENSEMBL API results"""
     mappings = pd.read_csv(loc_var2location_results, sep = '\t',
                            names=['query_rsid', 'mapped_rsid', 'allele_string', 'seq_region_name', 'start', 'end'])
+
+    # Filters the UNION rsIDs to only return the relevant mappings as VariantResults
+    if type(rsIDs) == list:
+        mappings = mappings.loc[mappings['query_rsid'].isin(rsIDs),]
+
     mappings['seq_region_name'] = mappings['seq_region_name'].astype('str') # Asssert character in case there are only chr numbers
     results = {}
 

@@ -89,9 +89,13 @@ if mappable:
 
             # Load ENSEMBL mappings
             loc_mapping = 'EnsemblMappings/{}/{}.out'.format(args.target_build, header['pgs_id'])
+            loc_mapping_UNION = 'EnsemblMappings/{}/UNION.out'.format(args.target_build)
             if os.path.isfile(loc_mapping):
-                print('Retrieving rsID mappings from ENSEMBL Mirror (var2location.pl)')
+                print('Retrieving rsID mappings from ENSEMBL Mirror (var2location.pl:{}.out)'.format(header['pgs_id']))
                 mapping_ensembl = parse_var2location(loc_mapping)
+            elif os.path.isfile(loc_mapping_UNION):
+                print('Retrieving rsID mappings from ENSEMBL Mirror (var2location.pl:UNION.out)')
+                mapping_ensembl = parse_var2location(loc_mapping_UNION, tomap_rsIDs)
             else:
                 sys.exit('Error: No rsID mappings from ENSEMBL Mirror (var2location.pl)')
         else:
@@ -102,6 +106,7 @@ if mappable:
 
     print('Starting Mapping')
     mapped_counter = Counter()
+    counter_hmcodes = Counter()
 
     # Create harmonization/output formatting objects
     if args.gzip is True:
@@ -159,7 +164,11 @@ if mappable:
             if hm[2] < 0 and source_build_mapped == args.target_build:
                 if 'chr_name' and 'chr_position' in df_scoring.columns:
                     hm = [v['chr_name'], v['chr_position'], 0]  # author-reported
-        hm_out.write('\t'.join(hm_formatter.format_line(v, hm, source_build, rsid=current_rsID)) + '\n')
+
+        # Harmonize and write to file
+        v_hm = hm_formatter.format_line(v, hm, source_build, rsid=current_rsID)
+        counter_hmcodes[v_hm[-2]] += 1
+        hm_out.write('\t'.join(v_hm) + '\n')
 
         if (i % 250000 == 0) and (i != 0):
             print('Mapped {} / {} lines'.format(i, df_scoring.shape[0]))
@@ -172,4 +181,5 @@ if mappable:
         print('{} lines mapped by liftover'.format(mapped_counter['mapped_lift']))
     if mapped_counter['mapped_author'] > 0:
         print('{} lines used author-reported mappings'.format(mapped_counter['mapped_author']))
+    print(counter_hmcodes)
     print('Mapping complete')
