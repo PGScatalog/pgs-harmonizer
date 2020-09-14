@@ -5,11 +5,12 @@ from pgs_harmonizer.harmonize import reversecomplement,acceptable_alleles, chrom
 class VCFResult:
     """Class to parse the results of a VCF Lookup and compare alleles"""
 
-    def __init__(self, chr, pos, build):
+    def __init__(self, chr, pos, build, vcf_result=None):
         self.vcf_query = [chr, pos, build]
-        self.vcf_result = None
-        if chr in chromosomes:
-            self.vcf_result = vcf_lookup(*self.vcf_query)
+        self.vcf_result = vcf_result
+        if self.vcf_result is None:
+            if chr in chromosomes:
+                self.vcf_result = vcf_lookup(*self.vcf_query)
 
     def check_alleles(self, eff, ref=None):
         """Check if this variant exists in the ENSEMBL VCF files"""
@@ -80,5 +81,25 @@ def vcf_lookup(chromosome, position, build, loc_vcfref='map/vcf_ref/'):
         return list(vcf('{}:{}-{}'.format(chromosome, position, position)))
 
 
+class VCFs:
+    """Class to open and hold all VCF files for a genome build"""
+    def __init__(self, build, loc_vcfref='map/vcf_ref/'):
+        self.by_chr = {}
+        self.build = build
+        for chr in chromosomes:
+            loc_vcf = loc_vcfref + '{}/homo_sapiens-chr{}.vcf.gz'.format(self.build, chr)
+            self.by_chr[chr] = VCF(loc_vcf)
+
+    def vcf_lookup(self,chromosome, position):
+        """Lookup a variant in a specific genome build"""
+        if chromosome not in chromosomes:
+            raise ValueError("Invalid Chromosome. Expected one of: {}".format(chromosomes))
+
+        if (type(position) is str) and ('-' in position):
+            r_lookup = list(self.by_chr[chromosome]('{}:{}'.format(chromosome, position)))
+        else:
+            r_lookup = list(self.by_chr[chromosome]('{}:{}-{}'.format(chromosome, position, position)))
+
+        return VCFResult(chromosome, position, self.build, r_lookup)
 
 #def guess_build(loc_file, vcf_root):

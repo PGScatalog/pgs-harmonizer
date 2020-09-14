@@ -77,17 +77,20 @@ class VariationResult:
 
     def infer_reference_allele(self, eff):
         """Try to infer the reference_allele. Report all possible reference alleles '/'-delimited"""
-        ref = nan
-        if eff in self.alleles:
-            MAJ = self.alleles[0]
-            MIN = self.alleles[1:]
+        try:
+            ref = nan
+            if eff in self.alleles:
+                MAJ = self.alleles[0]
+                MIN = self.alleles[1:]
 
-            if eff in MIN:
-                ref = MAJ
-            elif len(MIN) == 1:
-                ref = MIN[0]
-            else:
-                ref = '/'.join(MIN)
+                if eff in MIN:
+                    ref = MAJ
+                elif len(MIN) == 1:
+                    ref = MIN[0]
+                else:
+                    ref = '/'.join(MIN)
+        except:
+            ref = nan
         return ref
 
     def synonyms(self):

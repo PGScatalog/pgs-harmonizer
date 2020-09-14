@@ -3,7 +3,7 @@ from collections import Counter
 from pgs_harmonizer.harmonize import *
 from pgs_harmonizer.ensembl_tools import ensembl_post, clean_rsIDs, parse_var2location
 from pgs_harmonizer.liftover_tools import liftover, map_release
-from pgs_harmonizer.vcf_tools import *
+from pgs_harmonizer.vcf_tools import VCFs
 
 # Inputs
 parser = argparse.ArgumentParser(description='Harmonize a PGS Catalog Scoring file (PGS######.txt.gz) to a specific genome build.')
@@ -72,12 +72,16 @@ else:
     mappable = True
 
 if mappable:
+    if args.target_build == source_build_mapped:
+        print('Harmonizing -> {}'.format(args.target_build))
+    else:
+        print('Mapping + Harmonizing -> {}'.format(args.target_build))
+
     # Load Liftover Chains
     if source_build is not None:
         build_map = liftover(source_build, args.target_build)  # Get the chain file
 
     # Source ENSEMBL DB/API variant mappings if required
-    print('Mapping -> {}'.format(args.target_build))
     if 'rsID' in df_scoring.columns and args.ignore_rsid is False:
         tomap_rsIDs = clean_rsIDs(list(df_scoring['rsID']))
         if args.var2location:
@@ -103,6 +107,9 @@ if mappable:
             mapping_ensembl = ensembl_post(tomap_rsIDs, args.target_build) #retireve the SNP info from ENSEMBL
     else:
         mapping_ensembl = None
+
+    # Load VCFs
+    vcfs_targetbuild = VCFs(build=args.target_build)
 
     print('Starting Mapping')
     mapped_counter = Counter()
@@ -154,7 +161,7 @@ if mappable:
         # Check the VCF for variant
         # ToDo Revise harmonization codes
         if hm[2] is not None:
-            v_records = VCFResult(chr=hm[0], pos=hm[1], build=args.target_build)
+            v_records = vcfs_targetbuild.vcf_lookup(chromosome=hm[0], position=hm[1])
             if ('reference_allele' in v) and (pd.isnull(v['reference_allele']) is False) and (('/' in v['reference_allele']) is False):
                 hm[2] = v_records.check_alleles(ref=v['reference_allele'], eff=v['effect_allele'])
             else:
