@@ -6,6 +6,30 @@ within and between different genome builds.
 ## Requirements
 - Python packages: requests, pandas, pyliftover
 
+## Current options
+<pre>$ python Harmonize.py -h
+usage: Harmonize.py [-h] -id PGSID -build GENOMEBUILD [-loc_scorefiles DIR]
+                    [-source_build BUILD] [--var2location]
+                    [--addReferenceAllele] [--ignore_rsid] [--gzip]
+
+Harmonize a PGS Catalog Scoring file (PGS######.txt.gz) to a specific genome
+build.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -id PGSID             PGS Catalog Score ID
+  -build GENOMEBUILD    Target genome build choices = ['GRCh37', GRCh38']
+  -loc_scorefiles DIR   Root directory where the PGS files are located,
+                        otherwise assumed to be in: ../pgs_ScoringFiles/
+  -source_build BUILD   Source genome build [overwrites the scoring file
+                        header information]
+  --var2location        Uses the annotations from the var2location.pl script
+                        (ENSEMBL SQL connection)
+  --addReferenceAllele  Adds the reference_allele(s) column for rsIDs that
+                        only have a recorded effect_allele
+  --ignore_rsid         Ignores rsIDs and attempts to harmonize variants by
+                        liftover only
+  --gzip                Writes gzipped harmonized output</pre>
 
 ## pseudocode (adapted from GWAS Catalog [README](https://github.com/EBISPOT/sum-stats-formatter/blob/master/harmonisation/README.md))
 <pre>READ/PARSE PGS Scoring File and headers
