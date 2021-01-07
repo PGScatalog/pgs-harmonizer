@@ -8,20 +8,24 @@ from pgs_harmonizer.vcf_tools import VCFs
 # Inputs
 parser = argparse.ArgumentParser(description='Harmonize a PGS Catalog Scoring file (PGS######.txt.gz) to a specific genome build.')
 parser.add_argument("-id", dest="pgs_id",
-                    help="PGS Catalog Score ID", metavar="PGSID", required=True)
+                    help="PGS Catalog Score ID", metavar="PGS######", required=True)
 parser.add_argument("-build", dest="target_build",
-                    help="Target genome build choices = ['GRCh37', GRCh38']", metavar="GENOMEBUILD",
+                    help="Target genome build choices: 'GRCh37'or GRCh38'", metavar="GRCh##",
                     choices=['GRCh37', 'GRCh38'], required=True)
 parser.add_argument("-loc_scorefiles", dest="loc_scorefiles",
                     help="Root directory where the PGS files are located, otherwise assumed to be in: ../pgs_ScoringFiles/", metavar="DIR",
-                    default='../pgs_ScoringFiles/')
+                    default='../pgs_ScoringFiles/', required=False)
 parser.add_argument("-source_build", dest="source_build",
-                    help="Source genome build [overwrites the scoring file header information]", metavar="BUILD",
-                    default=None)
-parser.add_argument('--var2location', help='Uses the annotations from the var2location.pl script (ENSEMBL SQL connection)', action='store_true')
-parser.add_argument('--addReferenceAllele', help='Adds the reference_allele(s) column for rsIDs that only have a recorded effect_allele', action='store_true')
-parser.add_argument('--ignore_rsid', help='Ignores rsIDs and attempts to harmonize variants by liftover only', action='store_true')
-parser.add_argument('--gzip',help='Writes gzipped harmonized output', action='store_true')
+                    help="Source genome build [overwrites information in the scoring file header]", metavar="GENOMEBUILD",
+                    default=None, required=False)
+parser.add_argument('--var2location', help='Uses the annotations from the var2location.pl script (ENSEMBL SQL connection)',
+                    action='store_true', required=False)
+parser.add_argument('--addReferenceAllele', help='Adds a reference_allele(s) column for PGS that only have a recorded effect_allele',
+                    action='store_true', required=False)
+parser.add_argument('--ignore_rsid', help='Ignores rsID mappings and harmonizes variants using only liftover',
+                    action='store_true', required=False)
+parser.add_argument('--gzip',help='Writes gzipped harmonized output',
+                    action='store_true', required=False)
 args = parser.parse_args()
 
 # Locations of relevant files

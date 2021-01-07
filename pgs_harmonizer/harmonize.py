@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import json
+import gzip
 
 remap_header = {
     'PGS ID' : 'pgs_id',
@@ -26,7 +27,6 @@ def reversecomplement(x):
 def read_scorefile(loc_scorefile):
     """Loads PGS Catalog Scoring file and parses the header into a dictionary"""
     if loc_scorefile.endswith('.gz'):
-        import gzip
         f = gzip.open(loc_scorefile,'rt')
     else:
         f = open(loc_scorefile, 'rt')
@@ -46,9 +46,11 @@ def read_scorefile(loc_scorefile):
 
     df_scoring = pd.read_table(loc_scorefile, float_precision='round_trip', comment='#')
 
-
+    # Make sure certain columns maintin specific datatypes
     if 'chr_name' in df_scoring.columns:
         df_scoring['chr_name'] = df_scoring['chr_name'].astype('str') # Asssert character in case there are only chr numbers
+    if 'chr_position' in df_scoring.columns:
+        df_scoring['chr_position'] = df_scoring['chr_position'].astype('int')  # Asssert int
 
     return(header, df_scoring)
 
