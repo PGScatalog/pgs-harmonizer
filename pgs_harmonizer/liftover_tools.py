@@ -45,9 +45,9 @@ class liftover:
         lifted = self.chain.convert_coordinate('chr{}'.format(str(chr)), int(pos)) # ToDo figure out whether this step should be adjusted for 0/1 indexing?
         if lifted is not None:
             if len(lifted) == 1:
-                return lifted[0][0][3:], int(lifted[0][1]), 2
+                return lifted[0][0][3:], int(lifted[0][1]), False  # Only 1 position
             if len(lifted) > 1:
-                return lifted[0][0][3:], int(lifted[0][1]), 3
+                return lifted[0][0][3:], int(lifted[0][1]), True  # Multiple positions (take first)
             else:
                 return None, None, None
         else:

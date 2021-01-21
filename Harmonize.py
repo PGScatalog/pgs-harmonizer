@@ -150,10 +150,11 @@ for i, v in df_scoring.iterrows():
 
     hm_source = None  # { 0 : 'Author-reported', 1 : 'ENSEMBL Variation', 2 : 'liftover' }
     hm_alleles = []
-    hm_matchesVCF = False
-    hm_isPalindromic = False
-    hm_isFlipped = False
-    hm_OtherAllele = None
+    hm_matchesVCF = False # T/F whether the variant is consistent with the VCF/Variant Lookup
+    hm_isPalindromic = False  # T/F whether the alleles are consistent with being palindromic
+    hm_isFlipped = False  # T/F whether the alleles are consistent with the negative strand (from VCF)
+    hm_liftover_multimaps = None  # T/F whether the position has a unique liftover patch; None if liftover wasn't performed
+    hm_OtherAllele = None  # Field to capture the inferred reference allele from ensembl_tools
 
     hm_code = None  # Should be derived from the above information
 
@@ -172,11 +173,11 @@ for i, v in df_scoring.iterrows():
         if source_build_mapped == args.target_build:
             hm_chr = v['chr_name']
             hm_pos = v['chr_position']
-            hm_source = 0 # Author-reported
+            hm_source = 0  # Author-reported
         elif build_map.chain:
-            hm_chr, hm_pos, hm_liftcode = list(build_map.lift(v['chr_name'], v['chr_position']))  # Mapping by liftover
+            hm_chr, hm_pos, hm_liftover_multimaps = list(build_map.lift(v['chr_name'], v['chr_position']))  # Mapping by liftover
             mapped_counter['mapped_lift'] += 1
-    if all([x == None for x in [hm_chr, hm_pos]]):
+    if all([x is None for x in [hm_chr, hm_pos]]):
         mapped_counter['mapped_unable'] += 1
 
     # Check the VCF for variant
