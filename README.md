@@ -56,13 +56,8 @@ ENDFOR
      | 5  | Variant mapped [exists in ENSEMBL VCF]                       |
      | 4  | Variant mapped [exists in ENSEMBL VCF with ambiguous         |
      |    |                  orientation (e.g. A/T, C/G variants]        |
-     | 3  | Lifted over by position [multiple mapped locations]          |
-     | 2  | Lifted over by position                                      |
-     | 1  | Mapped by rsID                                               |
      | 0  | Author-reported variant information                          |
      |-1  | Unable to map the variant                                    |
-     |-2  | Mapped by rsID [allele(s) map to reverse strand]             |
-     |-3  | Mapped by rsID [alleles do not match ENSEMBL]                |
      |-4  | Strands flipped? [reverse complement alleles exist in VCF]   |
      |-5  | Variant doesn't exist in the ENSEMBL VCF                     |
      +----+--------------------------------------------------------------+
@@ -70,7 +65,7 @@ ENDFOR
 ## Related resources
 ### OpenTargets [GWAS summary statistics harmoniser](https://github.com/opentargets/genetics-sumstat-harmoniser)
 - Harmonization flowchart : https://github.com/opentargets/genetics-sumstat-harmoniser/blob/master/flowchart_v3.svg
-### GWAS Catalog [Summary Statistics harmonisation](https://github.com/EBISPOT/sum-stats-formatter/tree/master/harmonisation)
+### GWAS Catalog [Summary Statistics harmonisation](https://github.com/EBISPOT/gwas-sumstats-harmoniser)
 - Slightly different but uses the OpenTargets code/pipeline
 ### Liftover tools
 - UCSC liftover tools 

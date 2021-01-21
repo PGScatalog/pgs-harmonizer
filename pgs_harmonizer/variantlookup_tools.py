@@ -1,5 +1,7 @@
+import os
+import pandas as pd
 from cyvcf2 import VCF
-from pgs_harmonizer.harmonize import reversecomplement,acceptable_alleles, chromosomes
+from pgs_harmonizer.harmonize import reversecomplement, chromosomes
 
 
 class VCFResult:
@@ -7,7 +9,7 @@ class VCFResult:
 
     def __init__(self, chr, pos, build, vcf_result=None):
         self.vcf_query = [chr, pos, build]
-        self.vcf_result = vcf_result
+        self.vcf_result = vcf_result # List of variants
         if self.vcf_result is None:
             if chr in chromosomes:
                 self.vcf_result = vcf_lookup(*self.vcf_query)
@@ -25,7 +27,8 @@ class VCFResult:
             # Check all overlapping variants
             for v in self.vcf_result:
                 alleles = [v.REF] + v.ALT
-                alleles_rc = map(reversecomplement, alleles)
+                alleles_rc = [reversecomplement(x) for x in alleles]
+                #print('Alleles: {} | RC: {}'.format(alleles, alleles_rc))
 
                 if eff in alleles:
                     if ref is not None:
@@ -43,6 +46,7 @@ class VCFResult:
 
                 if (v in v_consistent) and (v in v_flipped):
                     v_palindromic.append(v)
+            #print(v_consistent, v_flipped, v_palindromic)
 
             # Decide on the harmonization code
             hm_result = -5
@@ -62,7 +66,15 @@ class VCFResult:
                 elif (v in v_flipped) and (hmcodes['flippedstrand'] > hm_result):
                     hm_result = hmcodes['flippedstrand']
 
-            return hm_result
+            # return hm_matchesVCF, hm_isPalindromic, hm_isFlipped
+            if hm_result == 5:
+                return True, False, False
+            elif hm_result == 4:
+                return True, True, False
+            elif hm_result == -4:
+                return True, False, True
+            else:
+                return False, False, False
 
 
 def vcf_lookup(chromosome, position, build, loc_vcfref='map/vcf_ref/'):
@@ -101,5 +113,25 @@ class VCFs:
             r_lookup = list(self.by_chr[chromosome]('{}:{}-{}'.format(chromosome, position, position)))
 
         return VCFResult(chromosome, position, self.build, r_lookup)
+
+
+class CohortVariants:
+    """Class to load cohort-specific variants information and compare alleles"""
+    def __init__(self, cohortname, variants_table):
+        self.cohort = cohortname
+        self.variants_table = variants_table
+
+    def check_variant(self):
+        """Checks whether the variant (chr, pos, alleles) is genotyped/imputed in this cohort"""
+
+    def infer_reference_allele(self, chr, pos, eff, rsID = None):
+        """Try to infer the reference_allele based on genotyped/imputed variants in this cohort"""
+
+def load_cohortvariants(cohortname):
+    loc_cohortvariants = 'map/cohort_ref/{}_variants.sorted.h5'.format(cohortname)
+    if os.path.isfile(loc_cohortvariants):
+        return CohortVariants(cohortname, pd.read_hdf(loc_cohortvariants, 'variants'))
+    else:
+        return None
 
 #def guess_build(loc_file, vcf_root):

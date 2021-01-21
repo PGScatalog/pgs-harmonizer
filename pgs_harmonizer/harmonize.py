@@ -13,6 +13,8 @@ remap_header = {
 } # ToDo remove once Scoring File headers are fixed
 
 
+remap_hm_source = { 0 : 'Author-reported', 1 : 'ENSEMBL Variation', 2 : 'liftover' }
+
 chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
 acceptable_alleles = re.compile('[ACGT]*$') #alleles that can be reverse complemented
 
@@ -54,6 +56,16 @@ def read_scorefile(loc_scorefile):
 
     return(header, df_scoring)
 
+
+def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, hm_source):
+    hm_coding = {
+        (True, False, False): 5,
+        (True, True, False): 4,
+        (True, False, True): -4,
+        (False, False, False): -5
+    }
+    return hm_coding.get((hm_matchesVCF, hm_isPalindromic, hm_isFlipped), -1)
+
 class Harmonizer:
     """Class to select and harmonize variant locations in a PGS Scoring file."""
     def __init__(self, cols):
@@ -79,14 +91,14 @@ class Harmonizer:
 
         self.cols_order += ['hm_code', 'hm_info']
 
-    def format_line(self, v, hm, build, rsid=None):
+    def format_line(self, v, hm, hm_source, build, rsid=None):
         """Method that takes harmonized variant location and compares it with the old information.
         Outputs any changes to an hm_info dictionary"""
         if type(hm) == tuple:
             hm = list(hm)
         v = dict(v)
 
-        hm_info = {}
+        hm_info = {'hm_source' : remap_hm_source.get(hm_source)}
         if (hm[2] is None) or (hm[2] < 0):
             if hm[2] is None:
                 v['hm_code'] = '-1' # Unable to map the variant

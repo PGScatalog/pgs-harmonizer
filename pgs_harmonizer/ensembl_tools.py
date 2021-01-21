@@ -37,8 +37,9 @@ class VariationResult:
             self.bp = bp[0]
             self.hm_code = 1
             self.alleles = alleles[0]
+            self.alleles_rc = [reversecomplement(x) for x in self.alleles]
 
-        return self.chrom, self.bp, self.hm_code, self.alleles
+        return self.chrom, self.bp, self.alleles
 
     def check_alleles(self, ref = None, eff = None):
         """Check if the original scoring file's alleles match the ENSEMBL rsID mapping allele string
@@ -49,14 +50,14 @@ class VariationResult:
         # Check Effect Allele
         if eff in self.alleles:
             hm_consistent.append('eff')
-        elif eff in map(reversecomplement, self.alleles):
+        elif eff in self.alleles_rc:
             hm_revcomp.append('eff')
 
         # Check reference allele
         if ref is not None:
             if ref in self.alleles:
                 hm_consistent.append('ref')
-            elif ref in map(reversecomplement, self.alleles):
+            elif ref in self.alleles_rc:
                 hm_revcomp.append('ref')
 
         # Check the alleles
