@@ -3,7 +3,6 @@ import time
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 import pandas as pd
-from numpy import nan
 from pgs_harmonizer.harmonize import reversecomplement
 
 
@@ -15,8 +14,8 @@ class VariationResult:
 
         self.chrom = None
         self.bp = None
-        self.hm_code = None
         self.alleles = None
+        self.alleles_rc = None
 
     def select_canonical_data(self, chromosomes):
         """To identify the best mapping (adapted from GWAS Catalog)"""
@@ -35,7 +34,6 @@ class VariationResult:
         if (len(bp) == 1) or (len(bp) > 1 and all_same(bp)):
             self.chrom = chrom[0]
             self.bp = bp[0]
-            self.hm_code = 1
             self.alleles = alleles[0]
             self.alleles_rc = [reversecomplement(x) for x in self.alleles]
 
@@ -60,38 +58,45 @@ class VariationResult:
             elif ref in self.alleles_rc:
                 hm_revcomp.append('ref')
 
-        # Check the alleles
-        if ref is None: # Just check effect allele
-            if 'eff' in hm_revcomp:
-                self.hm_code = -2
-            elif 'eff' not in hm_consistent:
-                self.hm_code = -3
-        else: # Check both alleles
-            if 'eff' and 'ref' in hm_consistent:
-                self.hm_code = 1
-            elif 'eff' and 'ref' in hm_revcomp:
-                self.hm_code = -2
-            else:
-                self.hm_code = -3
+        # isPalindromic
+        isPalindromic = False
+        for allele in self.alleles:
+            if allele in self.alleles_rc:
+                isPalindromic = True
 
-        return self.chrom, self.bp, self.hm_code
+        # Check the alleles
+        # return hm_matchesVCF, hm_isPalindromic, hm_isFlipped
+        if ref is None:
+            # Just check effect allele
+            if 'eff' in hm_revcomp:
+                return True, isPalindromic, True
+            elif 'eff' not in hm_consistent:
+                return False, isPalindromic, False
+        else:
+            # Check both alleles
+            if 'eff' and 'ref' in hm_consistent:
+                return True, isPalindromic, False
+            elif 'eff' and 'ref' in hm_revcomp:
+                return True, isPalindromic, True
+            else:
+                return False, isPalindromic, False
 
     def infer_reference_allele(self, eff):
         """Try to infer the reference_allele. Report all possible reference alleles '/'-delimited"""
         try:
-            ref = nan
+            ref = None
             if eff in self.alleles:
-                MAJ = self.alleles[0]
-                MIN = self.alleles[1:]
+                REF = self.alleles[0]
+                ALT = self.alleles[1:]
 
-                if eff in MIN:
-                    ref = MAJ
-                elif len(MIN) == 1:
-                    ref = MIN[0]
+                if eff in ALT:
+                    ref = REF
+                elif len(ALT) == 1:
+                    ref = ALT[0]
                 else:
-                    ref = '/'.join(MIN)
+                    ref = '/'.join(ALT)
         except:
-            ref = nan
+            ref = None
         return ref
 
     def synonyms(self):

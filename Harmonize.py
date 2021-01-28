@@ -3,7 +3,7 @@ from collections import Counter
 from pgs_harmonizer.harmonize import *
 from pgs_harmonizer.ensembl_tools import ensembl_post, clean_rsIDs, parse_var2location
 from pgs_harmonizer.liftover_tools import liftover, map_release
-from pgs_harmonizer.variantlookup_tools import VCFs, load_cohortvariants
+from pgs_harmonizer.variantlookup_tools import VCFs
 
 # Inputs
 parser = argparse.ArgumentParser(
@@ -19,6 +19,12 @@ parser.add_argument("-loc_scorefiles", dest="loc_scorefiles",
 parser.add_argument("-source_build", dest="source_build",
                     help="Source genome build [overwrites information in the scoring file header]",
                     metavar="GENOMEBUILD",
+                    default=None, required=False)
+parser.add_argument("-cohort_vcf", dest="cohort_name",
+                    help="Cohort VCF: Used to check if a variant is present in the genotyped/imputed variants for a "
+                         "cohort and add reference alleles when the information from ENSEMBL is ambiguous "
+                         "(multiple potential alleles)",
+                    metavar="COHORT",
                     default=None, required=False)
 parser.add_argument('--var2location',
                     help='Uses the annotations from the var2location.pl script (ENSEMBL SQL connection)',
@@ -41,7 +47,10 @@ if 'loc_scorefiles' in args:
 else:
     loc_scorefile = '../pgs_ScoringFiles/{}.txt.gz'.format(args.pgs_id)
 # Define output location
-loc_hm_out = './hm_coords/{}_hm{}.txt'.format(args.pgs_id, args.target_build)
+if args.cohort_name is not None:
+    loc_hm_out = './hm_coords/{}_{}hm{}.txt'.format(args.pgs_id, args.cohort_name, args.target_build)
+else:
+    loc_hm_out = './hm_coords/{}_hm{}.txt'.format(args.pgs_id, args.target_build)
 if args.gzip is True:
     loc_hm_out += '.gz'
 
@@ -87,7 +96,7 @@ if mappable is False:
 if args.target_build == source_build_mapped:
     print('Harmonizing -> {}'.format(args.target_build))
 else:
-    print('Re-Mapping/Liftingl + Harmonizing -> {}'.format(args.target_build))
+    print('Re-Mapping/Lifting + Harmonizing -> {}'.format(args.target_build))
 
 # Load Liftover Chains
 if source_build is not None:
@@ -120,8 +129,13 @@ if 'rsID' in df_scoring.columns and args.ignore_rsid is False:
         mapping_ensembl = ensembl_post(tomap_rsIDs, args.target_build)  # Retrieve the SNP info from ENSEMBL
 
 # Load Variant References (VCF & Cohort)
-vcfs_targetbuild = VCFs(build=args.target_build)  # ENSEMBL VCF
-
+usingCohortVCF = False
+if args.cohort_name is not None:
+    vcfs_targetbuild = VCFs(build=args.target_build, cohort_name=args.cohort_name)
+    usingCohortVCF = True
+    args.addReferenceAllele = True
+else:
+    vcfs_targetbuild = VCFs(build=args.target_build)  # ENSEMBL VCF
 
 print('Starting Mapping')
 mapped_counter = Counter()
@@ -134,69 +148,78 @@ else:
     hm_out = open(loc_hm_out, 'w')
 
 # Check if extra columns (reference_allele) will need to be added
-if args.addReferenceAllele is True and ('reference_allele' in df_scoring.columns is False):
-    hm_formatter = Harmonizer(list(df_scoring.columns) + ['reference_allele'])
-else:
-    hm_formatter = Harmonizer(df_scoring.columns)
+hm_formatter = Harmonizer(df_scoring.columns, ensureReferenceAllele=args.addReferenceAllele)
 hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
 
 #Loop through variants
 for i, v in df_scoring.iterrows():
+    v = dict(v)
     # Variant harmonization information
     current_rsID = None
-
     hm_chr = None
     hm_pos = None
-
-    hm_source = None  # { 0 : 'Author-reported', 1 : 'ENSEMBL Variation', 2 : 'liftover' }
+    hm_source = None  # {'Author-reported', 'ENSEMBL Variation', 'liftover' }
     hm_alleles = []
     hm_matchesVCF = False # T/F whether the variant is consistent with the VCF/Variant Lookup
     hm_isPalindromic = False  # T/F whether the alleles are consistent with being palindromic
     hm_isFlipped = False  # T/F whether the alleles are consistent with the negative strand (from VCF)
-    hm_liftover_multimaps = None  # T/F whether the position has a unique liftover patch; None if liftover wasn't performed
-    hm_OtherAllele = None  # Field to capture the inferred reference allele from ensembl_tools
+    hm_liftover_multimaps = None  # T/F whether the position has a unique liftover patch; None if no liftover done
+    hm_InferredOtherAllele = None  # Field to capture the inferred reference allele
+    hm_code = None  # Derived from the above True/False information
 
-    hm_code = None  # Should be derived from the above information
-
+    # 1) ADD/UPDATE CHROMOSOME POSITION
     if mapping_ensembl and v['rsID'] in mapping_ensembl:
         v_map = mapping_ensembl.get(v['rsID'])
         if v_map is not None:
             hm_chr, hm_pos, hm_alleles = list(v_map.select_canonical_data(chromosomes))
-            hm_source = 1
+            hm_source = 'ENSEMBL'
             current_rsID = v_map.id
-            if 'reference_allele' not in v and args.addReferenceAllele:
-                # Add reference allele(s) based on ENSMEBL - provided the variant matches the allele list
-                hm_OtherAllele = v_map.infer_reference_allele(v['effect_allele'])
-                v['reference_allele'] = hm_OtherAllele
+            if (args.addReferenceAllele is True) and (pd.isnull(v.get('reference_allele')) is True):
+                # Add reference allele(s) based on ENSMEBL
+                hm_InferredOtherAllele = v_map.infer_reference_allele(v['effect_allele'])
+                v['reference_allele'] = hm_InferredOtherAllele
             mapped_counter['mapped_rsID'] += 1
     elif 'chr_name' and 'chr_position' in df_scoring.columns:
         if source_build_mapped == args.target_build:
             hm_chr = v['chr_name']
             hm_pos = v['chr_position']
-            hm_source = 0  # Author-reported
+            hm_source = 'Author-reported'  # Author-reported
         elif build_map.chain:
-            hm_chr, hm_pos, hm_liftover_multimaps = list(build_map.lift(v['chr_name'], v['chr_position']))  # Mapping by liftover
+            hm_chr, hm_pos, hm_liftover_multimaps = list(build_map.lift(v['chr_name'], v['chr_position']))  # liftover
+            hm_source = 'liftover'
             mapped_counter['mapped_lift'] += 1
     if all([x is None for x in [hm_chr, hm_pos]]):
         mapped_counter['mapped_unable'] += 1
 
-    # Check the VCF for variant
-    # ToDo Revise harmonization codes
+    # 2) CHECK VARIANT STATUS WITH RESPECT TO A VCF
     if hm_source is not None:
         v_records = vcfs_targetbuild.vcf_lookup(chromosome=hm_chr, position=hm_pos)
-        if ('reference_allele' in v) and (pd.isnull(v['reference_allele']) is False) and (('/' in v['reference_allele']) is False):
-            hm_matchesVCF, hm_isPalindromic, hm_isFlipped = v_records.check_alleles(eff=v['effect_allele'],
-                                                                                    ref=v['reference_allele'])
+        if usingCohortVCF:
+            hm_source += '+{}'.format(args.cohort_name)
+
+        if ('reference_allele' in v) and (pd.isnull(v['reference_allele']) is False):
+            if ('/' in v['reference_allele']) is False:
+                hm_matchesVCF, hm_isPalindromic, hm_isFlipped = v_records.check_alleles(eff=v['effect_allele'],
+                                                                                        ref=v['reference_allele'])
+            else:
+                hm_InferredOtherAllele, hm_TF, hm_code = v_records.infer_reference_allele(eff=v['effect_allele'],
+                                                                                          oa_ensembl=hm_InferredOtherAllele)
+                v['reference_allele'] = hm_InferredOtherAllele
+                hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
         else:
             hm_matchesVCF, hm_isPalindromic, hm_isFlipped = v_records.check_alleles(eff=v['effect_allele'])
 
-        # If the variant does not work revert to author-reported if possible
-        # if hm[2] < 0 and source_build_mapped == args.target_build:
-        #     if 'chr_name' and 'chr_position' in df_scoring.columns:
-        #         hm = [v['chr_name'], v['chr_position'], 0]  # author-reported
-
-    hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, hm_source)
+    if hm_code is None:
+        hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, hm_source)
     hm = [hm_chr, hm_pos, hm_code]
+
+    # If the variant does not work revert to author-reported if possible
+    # This is required to handle INDELs with locations/allele notations that differ from the ENSEMBL VCF
+    # ToDo handle INDEL lookups in ENSEMBL VCF
+    if usingCohortVCF is False:
+        if hm_code < 0 and source_build_mapped == args.target_build:
+            if 'chr_name' and 'chr_position' in df_scoring.columns:
+                hm = [v['chr_name'], v['chr_position'], 0]  # Author-reported
 
     # Harmonize and write to file
     v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID)

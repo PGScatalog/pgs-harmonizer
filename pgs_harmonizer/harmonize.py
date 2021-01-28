@@ -13,10 +13,8 @@ remap_header = {
 } # ToDo remove once Scoring File headers are fixed
 
 
-remap_hm_source = { 0 : 'Author-reported', 1 : 'ENSEMBL Variation', 2 : 'liftover' }
-
 chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
-acceptable_alleles = re.compile('[ACGT]*$') #alleles that can be reverse complemented
+acceptable_alleles = re.compile('[ACGT]*$')  # alleles that can be reverse complemented
 
 def reversecomplement(x):
     if acceptable_alleles.match(x):
@@ -24,7 +22,6 @@ def reversecomplement(x):
     else:
         return None
 
-#reversecomplement = lambda x: ''.join([{'A':'T','C':'G','G':'C','T':'A'}[B] for B in x][::-1])
 
 def read_scorefile(loc_scorefile):
     """Loads PGS Catalog Scoring file and parses the header into a dictionary"""
@@ -68,7 +65,7 @@ def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, hm
 
 class Harmonizer:
     """Class to select and harmonize variant locations in a PGS Scoring file."""
-    def __init__(self, cols):
+    def __init__(self, cols, ensureReferenceAllele=False):
         '''Used to select the columns and ordering of the output PGS Scoring file'''
         self.cols_previous = cols
         self.hm_fields = ['rsID', 'chr_name', 'chr_position', 'effect_allele', 'reference_allele']
@@ -81,7 +78,7 @@ class Harmonizer:
 
         # Check if there is a reference allele will be added
         self.cols_order.append('effect_allele')
-        if 'reference_allele' in self.cols_previous:
+        if ('reference_allele' in self.cols_previous) or (ensureReferenceAllele is True):
             self.cols_order.append('reference_allele')
 
         # Check which other columns need to be added
@@ -98,7 +95,7 @@ class Harmonizer:
             hm = list(hm)
         v = dict(v)
 
-        hm_info = {'hm_source' : remap_hm_source.get(hm_source)}
+        hm_info = {'hm_source' : hm_source}
         if (hm[2] is None) or (hm[2] < 0):
             if hm[2] is None:
                 v['hm_code'] = '-1' # Unable to map the variant
@@ -136,7 +133,7 @@ class Harmonizer:
                 else:
                     o.append('')
             elif c in v:
-                o.append(str(v[c]).replace('nan', ''))
+                o.append(str(v[c]).replace('None', ''))
             else:
                 o.append('')
         return o
