@@ -29,8 +29,8 @@ parser.add_argument("-cohort_vcf", dest="cohort_name",
 parser.add_argument('--var2location',
                     help='Uses the annotations from the var2location.pl script (ENSEMBL SQL connection)',
                     action='store_true', required=False)
-parser.add_argument('--addReferenceAllele',
-                    help='Adds a reference_allele(s) column for PGS that only have a recorded effect_allele',
+parser.add_argument('--addOtherAllele',
+                    help='Adds a other_allele(s) column for PGS that only have a recorded effect_allele',
                     action='store_true', required=False)
 parser.add_argument('--ignore_rsid', help='Ignores rsID mappings and harmonizes variants using only liftover',
                     action='store_true', required=False)
@@ -148,6 +148,8 @@ else:
     hm_out = open(loc_hm_out, 'w')
 
 # Check if extra columns (reference_allele) will need to be added
+if (args.addReferenceAllele is True) and (('reference_allele' in df_scoring.columns) is False):
+    print('! Will INFER Reference/Other Allele')
 hm_formatter = Harmonizer(df_scoring.columns, ensureReferenceAllele=args.addReferenceAllele)
 hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
 
@@ -164,10 +166,10 @@ for i, v in df_scoring.iterrows():
     hm_isPalindromic = False  # T/F whether the alleles are consistent with being palindromic
     hm_isFlipped = False  # T/F whether the alleles are consistent with the negative strand (from VCF)
     hm_liftover_multimaps = None  # T/F whether the position has a unique liftover patch; None if no liftover done
-    hm_InferredOtherAllele = None  # Field to capture the inferred reference allele
+    hm_InferredOtherAllele = None  # Field to capture the inferred other/reference allele
     hm_code = None  # Derived from the above True/False information
 
-    # 1) ADD/UPDATE CHROMOSOME POSITION
+    # Step 1) ADD/UPDATE CHROMOSOME POSITION
     if mapping_ensembl and v['rsID'] in mapping_ensembl:
         v_map = mapping_ensembl.get(v['rsID'])
         if v_map is not None:
@@ -176,7 +178,7 @@ for i, v in df_scoring.iterrows():
             current_rsID = v_map.id
             if (args.addReferenceAllele is True) and (pd.isnull(v.get('reference_allele')) is True):
                 # Add reference allele(s) based on ENSMEBL
-                hm_InferredOtherAllele = v_map.infer_reference_allele(v['effect_allele'])
+                hm_InferredOtherAllele = v_map.infer_reference_allele(v['effect_allele']) # Based on the rsID
                 v['reference_allele'] = hm_InferredOtherAllele
             mapped_counter['mapped_rsID'] += 1
     elif 'chr_name' and 'chr_position' in df_scoring.columns:
@@ -191,7 +193,7 @@ for i, v in df_scoring.iterrows():
     if all([x is None for x in [hm_chr, hm_pos]]):
         mapped_counter['mapped_unable'] += 1
 
-    # 2) CHECK VARIANT STATUS WITH RESPECT TO A VCF
+    # Step 2) CHECK VARIANT STATUS WITH RESPECT TO A VCF
     if hm_source is not None:
         v_records = vcfs_targetbuild.vcf_lookup(chromosome=hm_chr, position=hm_pos)
         if usingCohortVCF:
@@ -215,7 +217,7 @@ for i, v in df_scoring.iterrows():
 
     # If the variant does not work revert to author-reported if possible
     # This is required to handle INDELs with locations/allele notations that differ from the ENSEMBL VCF
-    # ToDo handle INDEL lookups in ENSEMBL VCF
+    # ToDo handle INDEL lookups in VCFs (e.g. ENSEMBL) better
     if usingCohortVCF is False:
         if hm_code < 0 and source_build_mapped == args.target_build:
             if 'chr_name' and 'chr_position' in df_scoring.columns:

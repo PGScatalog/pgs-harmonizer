@@ -88,6 +88,8 @@ class VCFResult:
         # Loop through cohort variants to look for acceptable other_alleles
         for v in self.vcf_result:
             alleles = [v.REF] + v.ALT
+            if len(alleles) < 2:
+                continue
             alleles_rc = [reversecomplement(x) for x in alleles]
 
             hm_matchesVCF = False
@@ -166,7 +168,7 @@ class VCFs:
     def vcf_lookup(self,chromosome, position):
         """Lookup a variant in a specific genome build"""
         if chromosome not in chromosomes:
-            raise ValueError("Invalid Chromosome. Expected one of: {}".format(chromosomes))
+            return VCFResult(chromosome, position, self.build, [])
 
         if (type(position) is str) and ('-' in position):
             query = '{}:{}'.format(chromosome, position)
@@ -192,12 +194,5 @@ class CohortVariants:
 
     def infer_reference_allele(self, chr, pos, eff, rsID = None):
         """Try to infer the reference_allele based on genotyped/imputed variants in this cohort"""
-
-def load_cohortvariants(cohortname):
-    loc_cohortvariants = 'map/cohort_ref/{}_variants.sorted.h5'.format(cohortname)
-    if os.path.isfile(loc_cohortvariants):
-        return CohortVariants(cohortname, pd.read_hdf(loc_cohortvariants, 'variants'))
-    else:
-        return None
 
 #def guess_build(loc_file, vcf_root):
