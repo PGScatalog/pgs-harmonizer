@@ -14,7 +14,7 @@ class VCFResult:
             if chr in chromosomes:
                 self.vcf_result = vcf_lookup(*self.vcf_query)
 
-    def check_alleles(self, eff, ref=None):
+    def check_alleles(self, eff, ref=None, rsID = None):
         """Check if this variant exists in the ENSEMBL VCF files"""
         if self.vcf_result is None:
             return False, False, False
@@ -23,6 +23,10 @@ class VCFResult:
             v_consistent = []
             v_flipped = []
             v_palindromic = []
+
+            # v_rsIDmatch = []
+            # if rsID is None:
+            #     v_rsIDmatch = None
 
             # Check all overlapping variants
             for v in self.vcf_result:
@@ -46,6 +50,9 @@ class VCFResult:
 
                 if (v in v_consistent) and (v in v_flipped):
                     v_palindromic.append(v)
+
+                # if v_rsIDmatch is not None:
+                #     v_rsIDmatch.append(rsID == v.ID)
             # print(v_consistent, v_flipped, v_palindromic)
 
             # Decide on the harmonization code

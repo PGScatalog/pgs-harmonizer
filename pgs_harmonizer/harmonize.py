@@ -54,14 +54,21 @@ def read_scorefile(loc_scorefile):
     return(header, df_scoring)
 
 
-def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, hm_source):
+def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,alleles = [], ):
     hm_coding = {
         (True, False, False): 5,
         (True, True, False): 4,
         (True, False, True): -4,
         (False, False, False): -5
     }
-    return hm_coding.get((hm_matchesVCF, hm_isPalindromic, hm_isFlipped), -1)
+    hm_code = hm_coding.get((hm_matchesVCF, hm_isPalindromic, hm_isFlipped), -1)
+    if hm_code == 4:
+        if len(alleles) > 1:
+            rc_alleles = [reversecomplement(x) for x in alleles]
+            for A in alleles:
+                if A in rc_alleles:
+                    hm_code = 3
+    return hm_code
 
 class Harmonizer:
     """Class to select and harmonize variant locations in a PGS Scoring file."""

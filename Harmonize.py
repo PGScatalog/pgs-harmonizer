@@ -1,4 +1,5 @@
 import argparse, os, sys, gzip
+from tqdm import tqdm
 from collections import Counter
 from pgs_harmonizer.harmonize import *
 from pgs_harmonizer.ensembl_tools import ensembl_post, clean_rsIDs, parse_var2location
@@ -133,7 +134,7 @@ usingCohortVCF = False
 if args.cohort_name is not None:
     vcfs_targetbuild = VCFs(build=args.target_build, cohort_name=args.cohort_name)
     usingCohortVCF = True
-    args.addReferenceAllele = True
+    args.addOtherAllele = True
 else:
     vcfs_targetbuild = VCFs(build=args.target_build)  # ENSEMBL VCF
 
@@ -148,13 +149,13 @@ else:
     hm_out = open(loc_hm_out, 'w')
 
 # Check if extra columns (reference_allele) will need to be added
-if (args.addReferenceAllele is True) and (('reference_allele' in df_scoring.columns) is False):
+if (args.addOtherAllele is True) and (('reference_allele' in df_scoring.columns) is False):
     print('! Will INFER Reference/Other Allele')
-hm_formatter = Harmonizer(df_scoring.columns, ensureReferenceAllele=args.addReferenceAllele)
+hm_formatter = Harmonizer(df_scoring.columns, ensureReferenceAllele=args.addOtherAllele)
 hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
 
 #Loop through variants
-for i, v in df_scoring.iterrows():
+for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
     v = dict(v)
     # Variant harmonization information
     current_rsID = None
@@ -176,7 +177,7 @@ for i, v in df_scoring.iterrows():
             hm_chr, hm_pos, hm_alleles = list(v_map.select_canonical_data(chromosomes))
             hm_source = 'ENSEMBL'
             current_rsID = v_map.id
-            if (args.addReferenceAllele is True) and (pd.isnull(v.get('reference_allele')) is True):
+            if (args.addOtherAllele is True) and (pd.isnull(v.get('reference_allele')) is True):
                 # Add reference allele(s) based on ENSMEBL
                 hm_InferredOtherAllele = v_map.infer_reference_allele(v['effect_allele']) # Based on the rsID
                 v['reference_allele'] = hm_InferredOtherAllele
@@ -212,7 +213,10 @@ for i, v in df_scoring.iterrows():
             hm_matchesVCF, hm_isPalindromic, hm_isFlipped = v_records.check_alleles(eff=v['effect_allele'])
 
     if hm_code is None:
-        hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, hm_source)
+        l_alleles = [v['effect_allele']]
+        if 'reference_allele' in v:
+            l_alleles.append(v['reference_allele'])
+        hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, alleles=l_alleles)
     hm = [hm_chr, hm_pos, hm_code]
 
     # If the variant does not work revert to author-reported if possible

@@ -59,13 +59,15 @@ ENDFOR
      +----+--------------------------------------------------------------+
      |Code|Description of harmonisation process                          |
      +----+--------------------------------------------------------------+
-     | 5  | Variant mapped [exists in ENSEMBL VCF]                       |
-     | 4  | Variant mapped [exists in ENSEMBL VCF with ambiguous         |
-     |    |                  orientation (e.g. A/T, C/G variants]        |
+     | 5  | Mapped [variant exists in REFERENCE VCF]                     |
+     | 4  | Mapped [variant exists in REFERENCE VCF, other allele(s) with| 
+     |    |         ambiguous orientations exist at the locus]           |
+     | 3  | Mapped [variant in REFERENCE VCF with ambiguous orientation  |
+     |    |         (e.g. A/T, C/G variants) ]                           |
      | 0  | Author-reported variant information                          |
      |-1  | Unable to map the variant                                    |
      |-4  | Strands flipped? [reverse complement alleles exist in VCF]   |
-     |-5  | Variant doesn't exist in the ENSEMBL VCF                     |
+     |-5  | Variant doesn't exist in the REFERENCE VCF                   |
      +----+--------------------------------------------------------------+
 
 ## Related resources
