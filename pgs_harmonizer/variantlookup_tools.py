@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from cyvcf2 import VCF
-from pgs_harmonizer.harmonize import reversecomplement, chromosomes
+from pgs_harmonizer.harmonize import reversecomplement, chromosomes, DetermineHarmonizationCode
 
 
 class VCFResult:
@@ -16,74 +16,48 @@ class VCFResult:
 
     def check_alleles(self, eff, ref=None, rsID = None):
         """Check if this variant exists in the ENSEMBL VCF files"""
-        if self.vcf_result is None:
+        if (self.vcf_result is None) or (len(self.vcf_result) == 0):
             return False, False, False
         else:
             # Collect variants that match or mismatch the VCF
-            v_consistent = []
-            v_flipped = []
-            v_palindromic = []
-
+            v_hm = []
+            v_hm_code = []
             # v_rsIDmatch = []
             # if rsID is None:
             #     v_rsIDmatch = None
 
-            # Check all overlapping variants
+            # Loop through all overlapping variants
             for v in self.vcf_result:
+                hm_matchesVCF = False
+                hm_isPalindromic = False
+                hm_isFlipped = False
+
                 alleles = [v.REF] + v.ALT
                 alleles_rc = [reversecomplement(x) for x in alleles]
                 # print('Alleles: {} | RC: {}'.format(alleles, alleles_rc))
 
-                if eff in alleles:
-                    if ref is not None:
-                        if ref in alleles:
-                            v_consistent.append(v) # Both alleles match the VCF
-                    else:
-                        v_consistent.append(v)  # Effect allele matches the VCF
+                # Check allele(s) against VCF
+                if ref is not None:
+                    if (eff in alleles) and (ref in alleles):
+                        hm_matchesVCF = True
+                        if (eff in alleles_rc) and (ref in alleles_rc):
+                            hm_isPalindromic = True
+                    elif (eff in alleles_rc) and (ref in alleles_rc):
+                        hm_isFlipped = True
+                else:
+                    if eff in alleles:
+                        hm_matchesVCF = True
+                        if eff in alleles_rc:
+                            hm_isPalindromic = True
+                    elif eff in alleles_rc:
+                        hm_isFlipped = True
 
-                if eff in alleles_rc:
-                    if ref is not None:
-                        if ref in alleles_rc:
-                            v_flipped.append(v) # Both alleles match the reverse complement VCF alleles
-                    else:
-                        v_flipped.append(v)  # Both alleles match the reverse complement VCF alleles
+                hm_tuple = (hm_matchesVCF, hm_isPalindromic, hm_isFlipped)
+                v_hm.append(hm_tuple)
+                v_hm_code.append(DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped))
+        return v_hm[v_hm_code.index(max(v_hm_code))]
 
-                if (v in v_consistent) and (v in v_flipped):
-                    v_palindromic.append(v)
-
-                # if v_rsIDmatch is not None:
-                #     v_rsIDmatch.append(rsID == v.ID)
-            # print(v_consistent, v_flipped, v_palindromic)
-
-            # Decide on the harmonization code
-            hm_result = -5
-
-            hmcodes = {
-                'mapped': 5,
-                'mapped_palindromic': 4,
-                'flippedstrand': -4
-            }
-
-            for v in self.vcf_result:
-                if v in v_consistent:
-                    if (v in v_palindromic) and (hmcodes['mapped_palindromic'] > hm_result):
-                        hm_result = hmcodes['mapped_palindromic']
-                    elif hmcodes['mapped'] > hm_result:
-                        hm_result = hmcodes['mapped']
-                elif (v in v_flipped) and (hmcodes['flippedstrand'] > hm_result):
-                    hm_result = hmcodes['flippedstrand']
-
-            # return hm_matchesVCF, hm_isPalindromic, hm_isFlipped
-            if hm_result == 5:
-                return True, False, False
-            elif hm_result == 4:
-                return True, True, False
-            elif hm_result == -4:
-                return True, False, True
-            else:
-                return False, False, False
-
-    def infer_reference_allele(self, eff, oa_ensembl = None):
+    def infer_reference_allele(self, eff, oa_ensembl=None):
         """Try to infer the reference_allele from a vcf lookup (assumes the vcf is sorted by variant quality)"""
         if oa_ensembl is None:
             oa_ensembl = []
