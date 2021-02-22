@@ -14,7 +14,7 @@ class VCFResult:
             if chr in chromosomes:
                 self.vcf_result = vcf_lookup(*self.vcf_query)
 
-    def check_alleles(self, eff, ref=None, rsID = None):
+    def check_alleles(self, eff, oa=None):
         """Check if this variant exists in the ENSEMBL VCF files"""
         if (self.vcf_result is None) or (len(self.vcf_result) == 0):
             return False, False, False
@@ -22,9 +22,6 @@ class VCFResult:
             # Collect variants that match or mismatch the VCF
             v_hm = []
             v_hm_code = []
-            # v_rsIDmatch = []
-            # if rsID is None:
-            #     v_rsIDmatch = None
 
             # Loop through all overlapping variants
             for v in self.vcf_result:
@@ -37,12 +34,12 @@ class VCFResult:
                 # print('Alleles: {} | RC: {}'.format(alleles, alleles_rc))
 
                 # Check allele(s) against VCF
-                if ref is not None:
-                    if (eff in alleles) and (ref in alleles):
+                if oa is not None:
+                    if (eff in alleles) and (oa in alleles):
                         hm_matchesVCF = True
-                        if (eff in alleles_rc) and (ref in alleles_rc):
+                        if (eff in alleles_rc) and (oa in alleles_rc):
                             hm_isPalindromic = True
-                    elif (eff in alleles_rc) and (ref in alleles_rc):
+                    elif (eff in alleles_rc) and (oa in alleles_rc):
                         hm_isFlipped = True
                 else:
                     if eff in alleles:
@@ -57,11 +54,9 @@ class VCFResult:
                 v_hm_code.append(DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped))
         return v_hm[v_hm_code.index(max(v_hm_code))]
 
-    def infer_reference_allele(self, eff, oa_ensembl=None):
+    def infer_other_allele(self, eff, oa_ensembl=None, allowINDELs = False):
         """Try to infer the reference_allele from a vcf lookup (assumes the vcf is sorted by variant quality)"""
-        if oa_ensembl is None:
-            oa_ensembl = []
-        else:
+        if oa_ensembl is not None:
             oa_ensembl = oa_ensembl.split('/')  # [list of potential alleles, e.g. from ENSEMBL]
         oa_mapped = []  # list of potential reference alleles (if there are more variants)
         oa_mapped_hmcodes = []  # list of potential reference alleles (if there are more variants)
@@ -73,16 +68,28 @@ class VCFResult:
                 continue
             alleles_rc = [reversecomplement(x) for x in alleles]
 
+            minorallele = v.INFO.get('MA')
+            if minorallele is not None:
+                minorallele_rc = reversecomplement(v.INFO.get('MA'))
+            else:
+                minorallele_rc = None
+
             hm_matchesVCF = False
             hm_isPalindromic = False
             hm_isFlipped = False
-
-            # Check if
             oa = None
-            if v.REF == eff:
-                oa = v.ALT[0]
-            elif eff in v.ALT:
+
+            # Assume effect_allele is on positive strand
+            if eff in v.ALT:
                 oa = v.REF
+            elif eff == v.REF:
+                if len(v.ALT) == 1:
+                    oa = v.ALT[0]
+                else:
+                    if (minorallele is not None) and (minorallele != eff):
+                        oa = minorallele
+                    else:
+                        oa = v.ALT[0] # This is just choosing the first one
 
             if oa is not None:
                 hm_matchesVCF = True
@@ -93,19 +100,41 @@ class VCFResult:
                     hm_matchesVCF = True
                     hm_isFlipped = True
                     alleles_rc.remove(eff)
-                    oa = alleles_rc[0]
+                    if (minorallele_rc is not None) and (minorallele_rc in alleles_rc):
+                        oa = minorallele_rc
+                    else:
+                        oa = alleles_rc[0] # ToDo Make more informed choice about the other_allele (should match ENSEMBL, MAF)
 
             hm = (hm_matchesVCF, hm_isPalindromic, hm_isFlipped)
-            oa_mapped.append([oa, hm])
 
-            if hm == (True, False, False):
-                oa_mapped_hmcodes.append(5)
-            elif hm == (True, True, False):
-                oa_mapped_hmcodes.append(4)
-            elif hm == (True, False, True):
-                oa_mapped_hmcodes.append(-4)
+            # If we know the potential alleles (e.g. from ENSEMBL API/DB) check them
+            # before adding this variant/allele combination as an acceptable match (should
+            # get rid of weird INDELs that overlap without using rsID that isn't present in each VCF)
+            if oa_ensembl is not None:
+                oa_append = False
+                if oa in oa_ensembl:
+                    oa_append = True
+                elif (hm_isFlipped is True) and (oa in [reversecomplement(x) for x in oa_ensembl]):
+                    oa_append = True
             else:
-                oa_mapped_hmcodes.append(-5)
+                oa_append = True
+
+            # allowINDELs (e.g. variant alleles with length > 1)
+            if (oa_append is True) and (allowINDELs is False) and (oa is not None):
+                if len(oa) > 1:
+                    oa_append = False
+
+            if oa_append is True:
+                oa_mapped.append([oa, hm])
+
+                if hm == (True, False, False):
+                    oa_mapped_hmcodes.append(5)
+                elif hm == (True, True, False):
+                    oa_mapped_hmcodes.append(4)
+                elif hm == (True, False, True):
+                    oa_mapped_hmcodes.append(-4)
+                else:
+                    oa_mapped_hmcodes.append(-5)
 
         # Select the best OA
         #print(list(zip(oa_mapped, oa_mapped_hmcodes)))

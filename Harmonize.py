@@ -23,7 +23,7 @@ parser.add_argument("-source_build", dest="source_build",
                     default=None, required=False)
 parser.add_argument("-cohort_vcf", dest="cohort_name",
                     help="Cohort VCF: Used to check if a variant is present in the genotyped/imputed variants for a "
-                         "cohort and add reference alleles when the information from ENSEMBL is ambiguous "
+                         "cohort and add other allele when the information from ENSEMBL is ambiguous "
                          "(multiple potential alleles)",
                     metavar="COHORT",
                     default=None, required=False)
@@ -148,10 +148,11 @@ if args.gzip is True:
 else:
     hm_out = open(loc_hm_out, 'w')
 
-# Check if extra columns (reference_allele) will need to be added
-if (args.addOtherAllele is True) and (('reference_allele' in df_scoring.columns) is False):
+# Check if extra columns (other_allele) will need to be added
+if (args.addOtherAllele is True) and (('other_allele' in df_scoring.columns) is False):
     print('! Will INFER Reference/Other Allele')
-hm_formatter = Harmonizer(df_scoring.columns, ensureReferenceAllele=args.addOtherAllele)
+    df_scoring['other_allele'] = None
+hm_formatter = Harmonizer(df_scoring.columns, ensureOtherAllele=args.addOtherAllele)
 hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
 
 #Loop through variants
@@ -177,10 +178,10 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
             hm_chr, hm_pos, hm_alleles = list(v_map.select_canonical_data(chromosomes))
             hm_source = 'ENSEMBL'
             current_rsID = v_map.id
-            if (args.addOtherAllele is True) and (pd.isnull(v.get('reference_allele')) is True):
-                # Add reference allele(s) based on ENSMEBL
-                hm_InferredOtherAllele = v_map.infer_reference_allele(v['effect_allele']) # Based on the rsID
-                v['reference_allele'] = hm_InferredOtherAllele
+            if (args.addOtherAllele is True) and (pd.isnull(v.get('other_allele')) is True):
+                # Add other allele(s) based on ENSMEBL
+                hm_InferredOtherAllele = v_map.infer_other_allele(v['effect_allele']) # Based on the rsID
+                v['other_allele'] = hm_InferredOtherAllele
             mapped_counter['mapped_rsID'] += 1
     elif 'chr_name' and 'chr_position' in df_scoring.columns:
         if source_build_mapped == args.target_build:
@@ -200,22 +201,22 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
         if usingCohortVCF:
             hm_source += '+{}'.format(args.cohort_name)
 
-        if ('reference_allele' in v) and (pd.isnull(v['reference_allele']) is False):
-            if ('/' in v['reference_allele']) is False:
+        if 'other_allele' in v:
+            if (pd.isnull(v['other_allele']) is False) and ('/' in v['other_allele']) is False:
                 hm_matchesVCF, hm_isPalindromic, hm_isFlipped = v_records.check_alleles(eff=v['effect_allele'],
-                                                                                        ref=v['reference_allele'])
+                                                                                        oa=v['other_allele'])
             else:
-                hm_InferredOtherAllele, hm_TF, hm_code = v_records.infer_reference_allele(eff=v['effect_allele'],
-                                                                                          oa_ensembl=hm_InferredOtherAllele)
-                v['reference_allele'] = hm_InferredOtherAllele
+                hm_InferredOtherAllele, hm_TF, hm_code = v_records.infer_other_allele(eff=v['effect_allele'],
+                                                                                      oa_ensembl=hm_InferredOtherAllele)
+                v['other_allele'] = hm_InferredOtherAllele
                 hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
         else:
             hm_matchesVCF, hm_isPalindromic, hm_isFlipped = v_records.check_alleles(eff=v['effect_allele'])
 
     if hm_code is None:
         l_alleles = [v['effect_allele']]
-        if 'reference_allele' in v:
-            l_alleles.append(v['reference_allele'])
+        if 'other_allele' in v:
+            l_alleles.append(v['other_allele'])
         hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, alleles=l_alleles)
     hm = [hm_chr, hm_pos, hm_code]
 

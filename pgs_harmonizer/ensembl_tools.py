@@ -81,23 +81,23 @@ class VariationResult:
             else:
                 return False, isPalindromic, False
 
-    def infer_reference_allele(self, eff):
+    def infer_other_allele(self, eff):
         """Try to infer the reference_allele. Report all possible reference alleles '/'-delimited"""
         try:
-            ref = None
+            oa = None
             if eff in self.alleles:
                 REF = self.alleles[0]
                 ALT = self.alleles[1:]
 
                 if eff in ALT:
-                    ref = REF
+                    oa = REF
                 elif len(ALT) == 1:
-                    ref = ALT[0]
+                    oa = ALT[0]
                 else:
-                    ref = '/'.join(ALT)
+                    oa = '/'.join(ALT)
         except:
-            ref = None
-        return ref
+            oa = None
+        return oa
 
     def synonyms(self):
         return self.json_result['synonyms']

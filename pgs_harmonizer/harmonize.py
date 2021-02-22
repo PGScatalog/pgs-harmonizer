@@ -5,11 +5,13 @@ import gzip
 
 remap_header = {
     'PGS ID' : 'pgs_id',
+    'PGS Name' : 'pgs_name',
     'Reported Trait' : 'trait_reported',
     'Original Genome Build' : 'genome_build',
     'Number of Variants' : 'variants_number',
     'PGP ID' : 'pgp_id',
-    'Citation' : 'citation'
+    'Citation' : 'citation',
+    'LICENSE' : 'pgs_license'
 } # ToDo remove once Scoring File headers are fixed
 
 
@@ -46,6 +48,8 @@ def read_scorefile(loc_scorefile):
     df_scoring = pd.read_table(loc_scorefile, float_precision='round_trip', comment='#')
 
     # Make sure certain columns maintin specific datatypes
+    if 'reference_allele' in df_scoring.columns:
+        df_scoring = df_scoring.rename(columns={"reference_allele": "other_allele"})
     if 'chr_name' in df_scoring.columns:
         df_scoring['chr_name'] = df_scoring['chr_name'].astype('str') # Asssert character in case there are only chr numbers
     if 'chr_position' in df_scoring.columns:
@@ -72,10 +76,10 @@ def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,all
 
 class Harmonizer:
     """Class to select and harmonize variant locations in a PGS Scoring file."""
-    def __init__(self, cols, ensureReferenceAllele=False):
+    def __init__(self, cols, ensureOtherAllele=False):
         '''Used to select the columns and ordering of the output PGS Scoring file'''
         self.cols_previous = cols
-        self.hm_fields = ['rsID', 'chr_name', 'chr_position', 'effect_allele', 'reference_allele']
+        self.hm_fields = ['rsID', 'chr_name', 'chr_position', 'effect_allele', 'other_allele']
 
         self.cols_order = ['chr_name', 'chr_position']
 
@@ -85,8 +89,8 @@ class Harmonizer:
 
         # Check if there is a reference allele will be added
         self.cols_order.append('effect_allele')
-        if ('reference_allele' in self.cols_previous) or (ensureReferenceAllele is True):
-            self.cols_order.append('reference_allele')
+        if ('other_allele' in self.cols_previous) or (ensureOtherAllele is True):
+            self.cols_order.append('other_allele')
 
         # Check which other columns need to be added
         for c in self.cols_previous:
