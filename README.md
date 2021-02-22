@@ -51,8 +51,7 @@ FOR each variant in file
         *flag* variant and provide original mappings in hm_info column as dictionary
     ENDIF
     
-    Check and flag if the alleles are consistent with the ENSEMBL VCF
-    Write output
+    CHECK variant alleles against ENSEMBL or cohort-specific VCF and flag if the alleles are consistent (e.g. present, flipped, palindromic, etc)    
 ENDFOR
 </pre>
 
