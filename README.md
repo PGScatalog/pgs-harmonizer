@@ -10,7 +10,7 @@ within and between different genome builds.
 <pre>$ python ./Harmonize.py -h
 usage: Harmonize.py [-h] -id PGS###### -build GRCh## [-loc_scorefiles DIR]
                     [-source_build GENOMEBUILD] [-cohort_vcf COHORT]
-                    [--var2location] [--addReferenceAllele] [--ignore_rsid]
+                    [--var2location] [--addOtherAllele] [--ignore_rsid]
                     [--gzip]
 
 Harmonize a PGS Catalog Scoring file (PGS######.txt.gz) to a specific genome
@@ -27,12 +27,12 @@ optional arguments:
                         scoring file header]
   -cohort_vcf COHORT    Cohort VCF: Used to check if a variant is present in
                         the genotyped/imputed variants for a cohort and add
-                        reference alleles when the information from ENSEMBL is
+                        other allele when the information from ENSEMBL is
                         ambiguous (multiple potential alleles)
   --var2location        Uses the annotations from the var2location.pl script
                         (ENSEMBL SQL connection)
-  --addReferenceAllele  Adds a reference_allele(s) column for PGS that only
-                        have a recorded effect_allele
+  --addOtherAllele      Adds a other_allele(s) column for PGS that only have a
+                        recorded effect_allele
   --ignore_rsid         Ignores rsID mappings and harmonizes variants using
                         only liftover
   --gzip                Writes gzipped harmonized output</pre>
