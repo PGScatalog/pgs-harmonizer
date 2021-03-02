@@ -35,6 +35,8 @@ optional arguments:
                         recorded effect_allele
   --ignore_rsid         Ignores rsID mappings and harmonizes variants using
                         only liftover
+  --skip_strandflips    This flag will stop the harmonizing from trying to
+                        correct strand flips
   --gzip                Writes gzipped harmonized output</pre>
 
 ## pseudocode (adapted from GWAS Catalog [README](https://github.com/EBISPOT/sum-stats-formatter/blob/master/harmonisation/README.md))
