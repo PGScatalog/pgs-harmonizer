@@ -47,6 +47,7 @@ class VCFResult:
                         if eff in alleles_rc:
                             hm_isPalindromic = True
                     elif eff in alleles_rc:
+                        hm_matchesVCF = True
                         hm_isFlipped = True
 
                 hm_tuple = (hm_matchesVCF, hm_isPalindromic, hm_isFlipped)

@@ -65,7 +65,8 @@ ENDFOR
      |    |         (e.g. A/T, C/G variants) ]                           |
      | 0  | Author-reported variant information                          |
      |-1  | Unable to map the variant                                    |
-     |-4  | Strands flipped? [reverse complement alleles exist in VCF]   |
+     |-4  | Strands flipped? [reverse complement alleles exist in VCF,   |
+     |    |                  default behaviour is to correct by flipping]|
      |-5  | Variant doesn't exist in the REFERENCE VCF                   |
      +----+--------------------------------------------------------------+
 

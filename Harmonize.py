@@ -35,6 +35,8 @@ parser.add_argument('--addOtherAllele',
                     action='store_true', required=False)
 parser.add_argument('--ignore_rsid', help='Ignores rsID mappings and harmonizes variants using only liftover',
                     action='store_true', required=False)
+parser.add_argument('--skip_strandflips', help='This flag will stop the harmonizing from trying to correct strand flips',
+                    action='store_false', required=False)
 parser.add_argument('--gzip', help='Writes gzipped harmonized output',
                     action='store_true', required=False)
 args = parser.parse_args()
@@ -228,8 +230,10 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
             if 'chr_name' and 'chr_position' in df_scoring.columns:
                 hm = [v['chr_name'], v['chr_position'], 0]  # Author-reported
 
+    # ToDo (use allele frequency to resolve ambiguous variants)
+
     # Harmonize and write to file
-    v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID)
+    v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID, fixflips=args.skip_strandflips)
     counter_hmcodes[v_hm[-2]] += 1
     hm_out.write('\t'.join(v_hm) + '\n')
 

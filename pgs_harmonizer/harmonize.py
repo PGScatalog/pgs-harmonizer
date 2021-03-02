@@ -99,7 +99,7 @@ class Harmonizer:
 
         self.cols_order += ['hm_code', 'hm_info']
 
-    def format_line(self, v, hm, hm_source, build, rsid=None):
+    def format_line(self, v, hm, hm_source, build, rsid=None, fixflips=True):
         """Method that takes harmonized variant location and compares it with the old information.
         Outputs any changes to an hm_info dictionary"""
         if type(hm) == tuple:
@@ -109,23 +109,47 @@ class Harmonizer:
         hm_info = {'hm_source' : hm_source}
         if (hm[2] is None) or (hm[2] < 0):
             if hm[2] is None:
-                v['hm_code'] = '-1' # Unable to map the variant
+                v['hm_code'] = -1 # Unable to map the variant
             else:
                 v['hm_code'] = hm[2] # Variant does not match ENSEMBL Variation
 
-            # Fill in the original mapping in 'hm_info' and remove the harmonized variant information from the column
-            hm_info['original_build'] = build
-            for c in self.hm_fields:
-                f = v.get(c)
-                if f:
-                    hm_info[c] = f
-                    v[c] = ''
+            if (v['hm_code'] == -4) and (fixflips is True):
+                hm_info['original_build'] = build
+                hm_info['fixedStrandFlip'] = True
+                for c in self.hm_fields:
+                    f = v.get(c)
+                    if f is not None:
+                        if c in ['effect_allele', 'other_allele']:
+                            flipped_allele = reversecomplement(f)
+                            hm_info['original_{}'.format(c)] = f
+                            v[c] = flipped_allele
+                        elif c == 'rsID':
+                            if rsid is not None:  # mapped by rsID
+                                if rsid != v['rsID']:
+                                    hm_info['previous_rsID'] = v['rsID']
+                                    v['rsID'] = rsid
+                        else:
+                            hm_info[c] = f
+                            v[c] = ''
+                v['chr_name'] = hm[0]
+                v['chr_position'] = hm[1]
 
-            # If the variant was lifted but the allele's don't match add the lifted over positions
-            if hm[0] != None:
-                hm_info['hm_chr'] = hm[0]
-            if hm[1] != None:
-                hm_info['hm_chr_position'] = hm[1]
+            else:
+                if (v['hm_code'] == -4) and (fixflips is False):
+                    hm_info['fixedStrandFlip'] = False
+                # Fill in the original mapping in 'hm_info' and remove the harmonized variant information from the column
+                hm_info['original_build'] = build
+                for c in self.hm_fields:
+                    f = v.get(c)
+                    if f:
+                        hm_info[c] = f
+                        v[c] = ''
+
+                # If the variant was lifted but the allele's don't match add the lifted over positions
+                if hm[0] is not None:
+                    hm_info['hm_chr'] = hm[0]
+                if hm[1] is not None:
+                    hm_info['hm_chr_position'] = hm[1]
         else:
             v['chr_name'] = hm[0]
             v['chr_position'] = hm[1]
