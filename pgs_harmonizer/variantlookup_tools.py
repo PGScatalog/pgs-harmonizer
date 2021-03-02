@@ -175,7 +175,7 @@ class VCFs:
             loc_vcf = '{}/{}.vcf.gz'.format(loc_cohortref, cohort_name)
             self.VCF = VCF(loc_vcf)
 
-    def vcf_lookup(self,chromosome, position):
+    def vcf_lookup(self,chromosome, position, rsid = None):
         """Lookup a variant in a specific genome build"""
         if chromosome not in chromosomes:
             return VCFResult(chromosome, position, self.build, [])
@@ -189,6 +189,12 @@ class VCFs:
             r_lookup = list(self.by_chr[chromosome](query))
         else:
             r_lookup = list(self.VCF(query))
+
+        # Filter results by rsID (if supplied)
+        if rsid is not None:
+            v_rsid = [v for v in r_lookup if v.ID == rsid] # List of variants that match rsID
+            if len(v_rsid) > 0:
+                r_lookup = v_rsid # Replace with list of variant(s) that match rsID, else supplies all variants at locus
 
         return VCFResult(chromosome, position, self.build, r_lookup)
 

@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(
     description='Harmonize a PGS Catalog Scoring file (PGS######.txt.gz) to a specific genome build.')
 parser.add_argument("-id", dest="pgs_id", help="PGS Catalog Score ID", metavar="PGS######", required=True)
 parser.add_argument("-build", dest="target_build",
-                    help="Target genome build choices: 'GRCh37'or GRCh38'", metavar="GRCh##",
+                    help="Target genome build choices: 'GRCh37'or GRCh38'", metavar="GRCh3#",
                     choices=['GRCh37', 'GRCh38'], required=True)
 parser.add_argument("-loc_scorefiles", dest="loc_scorefiles",
                     help="Root directory where the PGS files are located, otherwise assumed to be in: ../pgs_ScoringFiles/",
@@ -197,7 +197,7 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
 
     # Step 2) CHECK VARIANT STATUS WITH RESPECT TO A VCF
     if hm_source is not None:
-        v_records = vcfs_targetbuild.vcf_lookup(chromosome=hm_chr, position=hm_pos)
+        v_records = vcfs_targetbuild.vcf_lookup(chromosome=hm_chr, position=hm_pos, rsid=current_rsID)
         if usingCohortVCF:
             hm_source += '+{}'.format(args.cohort_name)
 
