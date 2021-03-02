@@ -4,7 +4,7 @@ within and between different genome builds.
 
 
 ## Requirements
-- Python packages: requests, pandas, pyliftover
+- Python packages: requests, pandas, pyliftover, tqdm, cyvcf2
 
 ## Current options
 <pre>$ python ./Harmonize.py -h
