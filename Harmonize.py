@@ -33,6 +33,9 @@ parser.add_argument('--var2location',
 parser.add_argument('--addOtherAllele',
                     help='Adds a other_allele(s) column for PGS that only have a recorded effect_allele',
                     action='store_true', required=False)
+parser.add_argument('--addVariantID',
+                    help='Returns a column with the ID from the VCF corresponding to the match variant/allele(s)',
+                    action='store_true', required=False)
 parser.add_argument('--ignore_rsid', help='Ignores rsID mappings and harmonizes variants using only liftover',
                     action='store_true', required=False)
 parser.add_argument('--skip_strandflips', help='This flag will stop the harmonizing from trying to correct strand flips',
@@ -114,7 +117,7 @@ if 'rsID' in df_scoring.columns and args.ignore_rsid is False:
         with open('EnsemblMappings/variants/{}.txt'.format(header['pgs_id']), 'w') as outf:
             outf.write('\n'.join(tomap_rsIDs))
 
-        # ToDo add command to run var2location.pl on the EBI cluster (using local ENSEMBL mirror)
+        # ToDo add command to run var2location.pl on the EBI cluster (using local ENSEMBL mirror) or loop through ENSEMBL VCF for mappings
 
         # Load ENSEMBL mappings
         loc_mapping = 'EnsemblMappings/{}/{}.out'.format(args.target_build, header['pgs_id'])
@@ -154,7 +157,7 @@ else:
 if (args.addOtherAllele is True) and (('other_allele' in df_scoring.columns) is False):
     print('! Will INFER Reference/Other Allele')
     df_scoring['other_allele'] = None
-hm_formatter = Harmonizer(df_scoring.columns, ensureOtherAllele=args.addOtherAllele)
+hm_formatter = Harmonizer(df_scoring.columns, ensureOtherAllele=args.addOtherAllele, returnVariantID=args.addVariantID)
 hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
 
 #Loop through variants
@@ -170,7 +173,8 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
     hm_isPalindromic = False  # T/F whether the alleles are consistent with being palindromic
     hm_isFlipped = False  # T/F whether the alleles are consistent with the negative strand (from VCF)
     hm_liftover_multimaps = None  # T/F whether the position has a unique liftover patch; None if no liftover done
-    hm_InferredOtherAllele = None  # Field to capture the inferred other/reference allele
+    hm_inferOtherAllele = None  # Field to capture the inferred other/reference allele
+    hm_vid = None
     hm_code = None  # Derived from the above True/False information
 
     # Step 1) ADD/UPDATE CHROMOSOME POSITION
@@ -182,8 +186,8 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
             current_rsID = v_map.id
             if (args.addOtherAllele is True) and (pd.isnull(v.get('other_allele')) is True):
                 # Add other allele(s) based on ENSMEBL
-                hm_InferredOtherAllele = v_map.infer_other_allele(v['effect_allele']) # Based on the rsID
-                v['other_allele'] = hm_InferredOtherAllele
+                hm_inferOtherAllele = v_map.infer_OtherAllele(v['effect_allele']) # Based on the rsID
+                v['other_allele'] = hm_inferOtherAllele
             mapped_counter['mapped_rsID'] += 1
     elif 'chr_name' and 'chr_position' in df_scoring.columns:
         if source_build_mapped == args.target_build:
@@ -205,21 +209,25 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
 
         if 'other_allele' in v:
             if (pd.isnull(v['other_allele']) is False) and ('/' in v['other_allele']) is False:
-                hm_matchesVCF, hm_isPalindromic, hm_isFlipped = v_records.check_alleles(eff=v['effect_allele'],
-                                                                                        oa=v['other_allele'])
+                hm_TF, hm_vid = v_records.check_alleles(eff=v['effect_allele'],
+                                                        oa=v['other_allele'])
+                hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
             else:
-                hm_InferredOtherAllele, hm_TF, hm_code = v_records.infer_other_allele(eff=v['effect_allele'],
-                                                                                      oa_ensembl=hm_InferredOtherAllele)
-                v['other_allele'] = hm_InferredOtherAllele
+                hm_inferOtherAllele, hm_TF, hm_vid, hm_code = v_records.infer_OtherAllele(eff=v['effect_allele'],
+                                                                                          oa_ensembl=hm_inferOtherAllele)
+                v['other_allele'] = hm_inferOtherAllele
                 hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
         else:
-            hm_matchesVCF, hm_isPalindromic, hm_isFlipped = v_records.check_alleles(eff=v['effect_allele'])
+            hm_TF, hm_vid = v_records.check_alleles(eff=v['effect_allele'])
+            hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
 
     if hm_code is None:
-        l_alleles = [v['effect_allele']]
         if 'other_allele' in v:
-            l_alleles.append(v['other_allele'])
-        hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped, alleles=l_alleles)
+            hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,
+                                                 alleles=[v['effect_allele'], v['other_allele']])
+        else:
+            hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,
+                                                 alleles=[v['effect_allele']])
     hm = [hm_chr, hm_pos, hm_code]
 
     # If the variant does not work revert to author-reported if possible
@@ -233,7 +241,7 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
     # ToDo (use allele frequency to resolve ambiguous variants)
 
     # Harmonize and write to file
-    v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID, fixflips=args.skip_strandflips)
+    v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID, vcfid=hm_vid, fixflips=args.skip_strandflips)
     counter_hmcodes[v_hm[-2]] += 1
     hm_out.write('\t'.join(v_hm) + '\n')
 

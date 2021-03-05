@@ -24,6 +24,11 @@ def reversecomplement(x):
     else:
         return None
 
+def conv2int(n):
+    try:
+        return int(n)
+    except:
+        return n
 
 def read_scorefile(loc_scorefile):
     """Loads PGS Catalog Scoring file and parses the header into a dictionary"""
@@ -45,15 +50,17 @@ def read_scorefile(loc_scorefile):
     if header['genome_build'] == 'NR':
         header['genome_build'] = None
 
-    df_scoring = pd.read_table(loc_scorefile, float_precision='round_trip', comment='#')
+    df_scoring = pd.read_table(loc_scorefile, float_precision='round_trip', comment='#',
+                               dtype = {'chr_position' : 'object',
+                                        'chr_name' : 'str'})
 
-    # Make sure certain columns maintin specific datatypes
+    # Make sure certain columns maintain specific datatypes
     if 'reference_allele' in df_scoring.columns:
         df_scoring = df_scoring.rename(columns={"reference_allele": "other_allele"})
     if 'chr_name' in df_scoring.columns:
         df_scoring['chr_name'] = df_scoring['chr_name'].astype('str') # Asssert character in case there are only chr numbers
     if 'chr_position' in df_scoring.columns:
-        df_scoring['chr_position'] = df_scoring['chr_position'].astype('int')  # Asssert int
+        df_scoring.loc[df_scoring['chr_position'].isnull() == False, 'chr_position'] = [conv2int(x) for x in df_scoring.loc[df_scoring['chr_position'].isnull() == False, 'chr_position']]
 
     return(header, df_scoring)
 
@@ -76,12 +83,15 @@ def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,all
 
 class Harmonizer:
     """Class to select and harmonize variant locations in a PGS Scoring file."""
-    def __init__(self, cols, ensureOtherAllele=False):
+    def __init__(self, cols, ensureOtherAllele=False, returnVariantID = False):
         '''Used to select the columns and ordering of the output PGS Scoring file'''
         self.cols_previous = cols
         self.hm_fields = ['rsID', 'chr_name', 'chr_position', 'effect_allele', 'other_allele']
 
-        self.cols_order = ['chr_name', 'chr_position']
+        if returnVariantID is True:
+            self.cols_order = ['variant_id', 'chr_name', 'chr_position']
+        else:
+            self.cols_order = ['chr_name', 'chr_position']
 
         # Check if the rsID will be added
         if 'rsID' in self.cols_previous:
@@ -99,12 +109,13 @@ class Harmonizer:
 
         self.cols_order += ['hm_code', 'hm_info']
 
-    def format_line(self, v, hm, hm_source, build, rsid=None, fixflips=True):
+    def format_line(self, v, hm, hm_source, build, rsid=None,vcfid=None, fixflips=True):
         """Method that takes harmonized variant location and compares it with the old information.
         Outputs any changes to an hm_info dictionary"""
         if type(hm) == tuple:
             hm = list(hm)
         v = dict(v)
+        v['variant_id'] = vcfid
 
         hm_info = {'hm_source' : hm_source}
         if (hm[2] is None) or (hm[2] < 0):
@@ -131,6 +142,9 @@ class Harmonizer:
                         else:
                             hm_info[c] = f
                             v[c] = ''
+                if ('variant_id' in self.cols_order) and (vcfid is not None):
+                    hm_info['variant_id'] = vcfid
+                    v['variant_id'] = ''
                 v['chr_name'] = hm[0]
                 v['chr_position'] = hm[1]
 
@@ -144,6 +158,9 @@ class Harmonizer:
                     if f:
                         hm_info[c] = f
                         v[c] = ''
+                if ('variant_id' in self.cols_order) and (vcfid is not None):
+                    hm_info['variant_id'] = vcfid
+                    v['variant_id'] = ''
 
                 # If the variant was lifted but the allele's don't match add the lifted over positions
                 if hm[0] is not None:

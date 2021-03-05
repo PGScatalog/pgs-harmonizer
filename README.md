@@ -33,6 +33,8 @@ optional arguments:
                         (ENSEMBL SQL connection)
   --addOtherAllele      Adds a other_allele(s) column for PGS that only have a
                         recorded effect_allele
+  --addVariantID        Returns a column with the ID from the VCF
+                        corresponding to the match variant/allele(s)
   --ignore_rsid         Ignores rsID mappings and harmonizes variants using
                         only liftover
   --skip_strandflips    This flag will stop the harmonizing from trying to

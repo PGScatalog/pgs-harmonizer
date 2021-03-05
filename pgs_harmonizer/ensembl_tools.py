@@ -81,7 +81,7 @@ class VariationResult:
             else:
                 return False, isPalindromic, False
 
-    def infer_other_allele(self, eff):
+    def infer_OtherAllele(self, eff):
         """Try to infer the reference_allele. Report all possible reference alleles '/'-delimited"""
         try:
             oa = None

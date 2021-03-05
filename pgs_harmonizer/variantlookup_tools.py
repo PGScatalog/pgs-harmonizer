@@ -17,7 +17,7 @@ class VCFResult:
     def check_alleles(self, eff, oa=None):
         """Check if this variant exists in the ENSEMBL VCF files"""
         if (self.vcf_result is None) or (len(self.vcf_result) == 0):
-            return False, False, False
+            return (False, False, False), None
         else:
             # Collect variants that match or mismatch the VCF
             v_hm = []
@@ -51,11 +51,11 @@ class VCFResult:
                         hm_isFlipped = True
 
                 hm_tuple = (hm_matchesVCF, hm_isPalindromic, hm_isFlipped)
-                v_hm.append(hm_tuple)
+                v_hm.append([hm_tuple, v.ID])
                 v_hm_code.append(DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped))
         return v_hm[v_hm_code.index(max(v_hm_code))]
 
-    def infer_other_allele(self, eff, oa_ensembl=None, allowINDELs = False):
+    def infer_OtherAllele(self, eff, oa_ensembl=None, allowINDELs = False):
         """Try to infer the reference_allele from a vcf lookup (assumes the vcf is sorted by variant quality)"""
         if oa_ensembl is not None:
             oa_ensembl = oa_ensembl.split('/')  # [list of potential alleles, e.g. from ENSEMBL]
@@ -126,7 +126,7 @@ class VCFResult:
                     oa_append = False
 
             if oa_append is True:
-                oa_mapped.append([oa, hm])
+                oa_mapped.append([oa, hm, v.ID])
 
                 if hm == (True, False, False):
                     oa_mapped_hmcodes.append(5)
@@ -141,9 +141,9 @@ class VCFResult:
         #print(list(zip(oa_mapped, oa_mapped_hmcodes)))
         if len(oa_mapped_hmcodes) >= 1:
             i_bestmap = oa_mapped_hmcodes.index(max(oa_mapped_hmcodes))
-            return oa_mapped[i_bestmap][0], oa_mapped[i_bestmap][1], oa_mapped_hmcodes[i_bestmap]
+            return oa_mapped[i_bestmap][0], oa_mapped[i_bestmap][1], oa_mapped[i_bestmap][2], oa_mapped_hmcodes[i_bestmap]
         else:
-            return None, (False, False, False), -5
+            return None, (False, False, False), None, -5
 
 
 def vcf_lookup(chromosome, position, build, loc_vcfref='map/vcf_ref/'):
