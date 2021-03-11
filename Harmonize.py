@@ -79,7 +79,8 @@ if source_build in map_release.values():
     print('PGS ID: {} | Build: {}/{}'.format(header['pgs_id'], source_build, source_build_mapped))
 elif source_build in map_release.keys():
     source_build_mapped = source_build
-
+    print('PGS ID: {} | Build: {}'.format(header['pgs_id'], source_build))
+else:
     print('PGS ID: {} | Build: {}'.format(header['pgs_id'], source_build))
 print('Number of variants (score file lines) = {}'.format(header['variants_number']))
 # ToDo - print columns available for mapping
@@ -245,8 +246,8 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
     counter_hmcodes[v_hm[-2]] += 1
     hm_out.write('\t'.join(v_hm) + '\n')
 
-    if (i % 250000 == 0) and (i != 0):
-        print('Mapped {} / {} lines'.format(i, df_scoring.shape[0]))
+    # if (i % 250000 == 0) and (i != 0):
+    #     print('Mapped {} / {} lines'.format(i, df_scoring.shape[0]))
 
 hm_out.close()
 
