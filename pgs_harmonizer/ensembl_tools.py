@@ -186,12 +186,14 @@ def parse_var2location(loc_var2location_results, rsIDs = None):
 
     # Loop through results and parse to Variant
     for query_rsid, maps in mappings.groupby('query_rsid'):
-        q_json = {'name': maps.iloc[0,1], 'mappings': []}
-        syn = list(set(maps['query_rsid']).union(maps['mapped_rsid']))
-        for m in maps.iterrows():
-            q_json['mappings'].append(dict(m[1]))
-        v = VariationResult(maps.iloc[0,1], q_json)
-        for s in syn:
-            results[s] = v
+        q_json = {'name': maps.iloc[0, 1], 'mappings': [dict(m[1]) for m in maps.iterrows()]}
+
+        vresult = VariationResult(maps.iloc[0,1], q_json)
+
+        # Return Results indexed by each rsID
+        syn = set(maps['mapped_rsid'])
+        syn.add(query_rsid)
+
+        results.update([(s, vresult) for s in syn])
 
     return results
