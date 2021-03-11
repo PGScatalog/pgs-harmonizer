@@ -142,9 +142,6 @@ class Harmonizer:
                         else:
                             hm_info[c] = f
                             v[c] = ''
-                if ('variant_id' in self.cols_order) and (vcfid is not None):
-                    hm_info['variant_id'] = vcfid
-                    v['variant_id'] = ''
                 v['chr_name'] = hm[0]
                 v['chr_position'] = hm[1]
 
