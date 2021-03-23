@@ -13,10 +13,13 @@ variant batches using the Ensembl API. There are ways to speed this up by lookin
 by running the `DownloadMappings.py` script in the project directory.
 
 To test that the pipeline can run try these commands on the test data in the project directory:
-
+    
+    # GRCh37
     python Harmonize.py -id PGS000015 -loc_scorefiles test_data/ -build GRCh37 -loc_hmoutput test_data/
     python Harmonize.py -id PGS000065 -loc_scorefiles test_data/ -build GRCh37 -loc_hmoutput test_data/
-
+    # GRCh38
+    python Harmonize.py -id PGS000015 -loc_scorefiles test_data/ -build GRCh38 -loc_hmoutput test_data/
+    python Harmonize.py -id PGS000065 -loc_scorefiles test_data/ -build GRCh38 -loc_hmoutput test_data/
 ## Current options
 <pre>$ python ./Harmonize.py -h
 usage: Harmonize.py [-h] -id PGS###### -build GRCh## [-loc_scorefiles DIR]
