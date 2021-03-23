@@ -2,9 +2,15 @@
 A pipeline to format and harmonize [Polygenic Score (PGS) Catalog Scoring Files](http://www.pgscatalog.org/downloads/#dl_ftp) 
 within and between different genome builds. 
 
+_External users NB: the pipeline will run very slowly if only rsIDs are given, because it looks up each rsID in 200 
+variant batches using the Ensembl API. There are ways to speed this up by looking up the total set of rsIDs once using the 
+`EnsemblMappings/var2location_3738.pl` script and the public MySQL connection._
+
 
 ## Requirements
 - Python packages: requests, pandas, pyliftover, tqdm, cyvcf2
+- VCFs from Ensembl (in `/map/vcf_ref/`) or a specific cohort (in `/map/cohort_ref/`). Ensembl VCFs can be downloaded 
+by running the `DownloadMappings.py` script in the project directory.
 
 ## Current options
 <pre>$ python ./Harmonize.py -h
