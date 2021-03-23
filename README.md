@@ -12,6 +12,11 @@ variant batches using the Ensembl API. There are ways to speed this up by lookin
 - VCFs from Ensembl (in `/map/vcf_ref/`) or a specific cohort (in `/map/cohort_ref/`). Ensembl VCFs can be downloaded 
 by running the `DownloadMappings.py` script in the project directory.
 
+To test that the pipeline can run try these commands on the test data in the project directory:
+
+    python Harmonize.py -id PGS000015 -loc_scorefiles test_data/ -build GRCh37 -loc_hmoutput test_data/
+    python Harmonize.py -id PGS000065 -loc_scorefiles test_data/ -build GRCh37 -loc_hmoutput test_data/
+
 ## Current options
 <pre>$ python ./Harmonize.py -h
 usage: Harmonize.py [-h] -id PGS###### -build GRCh## [-loc_scorefiles DIR]
@@ -35,6 +40,8 @@ optional arguments:
                         the genotyped/imputed variants for a cohort and add
                         other allele when the information from ENSEMBL is
                         ambiguous (multiple potential alleles)
+  -loc_hmoutput DIR     Directory where the harmonization output will be saved
+                        (default: hm_coords/)
   --var2location        Uses the annotations from the var2location.pl script
                         (ENSEMBL SQL connection)
   --addOtherAllele      Adds a other_allele(s) column for PGS that only have a

@@ -27,6 +27,10 @@ parser.add_argument("-cohort_vcf", dest="cohort_name",
                          "(multiple potential alleles)",
                     metavar="COHORT",
                     default=None, required=False)
+parser.add_argument("-loc_hmoutput", dest="loc_outputs",
+                    help="Directory where the harmonization output will be saved (default: hm_coords/)",
+                    metavar="DIR",
+                    default='./hm_coords/', required=False)
 parser.add_argument('--var2location',
                     help='Uses the annotations from the var2location.pl script (ENSEMBL SQL connection)',
                     action='store_true', required=False)
@@ -53,10 +57,15 @@ if 'loc_scorefiles' in args:
 else:
     loc_scorefile = '../pgs_ScoringFiles/{}.txt.gz'.format(args.pgs_id)
 # Define output location
+ofolder = args.loc_outputs
+if ofolder.endswith('/'):
+    ofolder = ofolder[:-1]
+if os.path.isdir(ofolder) is False:
+    os.mkdir(ofolder)
 if args.cohort_name is not None:
-    loc_hm_out = './hm_coords/{}_{}hm{}.txt'.format(args.pgs_id, args.cohort_name, args.target_build)
+    loc_hm_out = '{}/{}_{}hm{}.txt'.format(ofolder, args.pgs_id, args.cohort_name, args.target_build)
 else:
-    loc_hm_out = './hm_coords/{}_hm{}.txt'.format(args.pgs_id, args.target_build)
+    loc_hm_out = '{}/{}_hm{}.txt'.format(ofolder, args.pgs_id, args.target_build)
 if args.gzip is True:
     loc_hm_out += '.gz'
 
