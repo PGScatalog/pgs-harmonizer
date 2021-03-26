@@ -46,6 +46,8 @@ parser.add_argument('--skip_strandflips', help='This flag will stop the harmoniz
                     action='store_false', required=False)
 parser.add_argument('--gzip', help='Writes gzipped harmonized output',
                     action='store_true', required=False)
+parser.add_argument('--silent_tqdm', help='Disables tqdm progress bar',
+                    action='store_true', required=False)
 args = parser.parse_args()
 
 ## I/O File focations
@@ -171,7 +173,7 @@ hm_formatter = Harmonizer(df_scoring.columns, ensureOtherAllele=args.addOtherAll
 hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
 
 #Loop through variants
-for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0]):
+for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0], disable=args.silent_tqdm):
     v = dict(v)
     # Variant harmonization information
     current_rsID = None
