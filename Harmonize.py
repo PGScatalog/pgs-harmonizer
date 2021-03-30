@@ -119,6 +119,8 @@ else:
 # Load Liftover Chains
 if source_build is not None:
     build_map = liftover(source_build, args.target_build)  # Get the chain file
+else:
+    build_map = None
 
 # Source ENSEMBL DB/API variant mappings if required
 mapping_ensembl = None
@@ -206,7 +208,7 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0], disable=args.
             hm_chr = v['chr_name']
             hm_pos = v['chr_position']
             hm_source = 'Author-reported'  # Author-reported
-        elif build_map.chain:
+        elif (build_map is not None) and (build_map.chain is not None):
             hm_chr, hm_pos, hm_liftover_multimaps = list(build_map.lift(v['chr_name'], v['chr_position']))  # liftover
             hm_source = 'liftover'
             mapped_counter['mapped_lift'] += 1
