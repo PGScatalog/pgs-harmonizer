@@ -53,6 +53,8 @@ optional arguments:
                         corresponding to the match variant/allele(s)
   --ignore_rsid         Ignores rsID mappings and harmonizes variants using
                         only liftover
+  --author_reported     Replaces unmappable variants (hm_code = -5) with the
+                        author-reported code (hm_code = 0)                       
   --skip_strandflips    This flag will stop the harmonizing from trying to
                         correct strand flips
   --gzip                Writes gzipped harmonized output</pre>
@@ -83,7 +85,7 @@ ENDFOR
      |    |         ambiguous orientations exist at the locus]           |
      | 3  | Mapped [variant in REFERENCE VCF with ambiguous orientation  |
      |    |         (e.g. A/T, C/G variants) ]                           |
-     | 0  | Author-reported variant information                          |
+     | 0  | Author-reported variant information (not found in VCF)       |
      |-1  | Unable to map the variant                                    |
      |-4  | Strands flipped? [reverse complement alleles exist in VCF,   |
      |    |                  default behaviour is to correct by flipping]|

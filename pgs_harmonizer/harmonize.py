@@ -109,13 +109,16 @@ class Harmonizer:
 
         self.cols_order += ['hm_code', 'hm_info']
 
-    def format_line(self, v, hm, hm_source, build, rsid=None,vcfid=None, fixflips=True):
+    def format_line(self, v, hm, hm_source, build, rsid=None,vcfid=None, fixflips=True, unmappable2authorreported=False):
         """Method that takes harmonized variant location and compares it with the old information.
         Outputs any changes to an hm_info dictionary"""
         if type(hm) == tuple:
             hm = list(hm)
         v = dict(v)
         v['variant_id'] = vcfid
+
+        if (unmappable2authorreported is True) and (hm[2] == -5):
+            hm[2] = 0 # If the variant does not work revert to author-reported if possible
 
         hm_info = {'hm_source' : hm_source}
         if (hm[2] is None) or (hm[2] < 0):
@@ -144,7 +147,6 @@ class Harmonizer:
                             v[c] = ''
                 v['chr_name'] = hm[0]
                 v['chr_position'] = hm[1]
-
             else:
                 if (v['hm_code'] == -4) and (fixflips is False):
                     hm_info['fixedStrandFlip'] = False

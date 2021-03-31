@@ -42,6 +42,8 @@ parser.add_argument('--addVariantID',
                     action='store_true', required=False)
 parser.add_argument('--ignore_rsid', help='Ignores rsID mappings and harmonizes variants using only liftover',
                     action='store_true', required=False)
+parser.add_argument('--author_reported', help='Replaces unmappable variants (hm_code = -5) with the author-reported code (hm_code = 0)',
+                    action='store_true', required=False)
 parser.add_argument('--skip_strandflips', help='This flag will stop the harmonizing from trying to correct strand flips',
                     action='store_false', required=False)
 parser.add_argument('--gzip', help='Writes gzipped harmonized output',
@@ -98,6 +100,7 @@ print('Number of variants (score file lines) = {}'.format(header['variants_numbe
 
 # Sorting out the genome build
 mappable = False
+tf_unmappable2authorreported = False
 if source_build_mapped is None:
     if 'rsID' in df_scoring.columns:
         mappable = True
@@ -113,6 +116,8 @@ if mappable is False:
 
 if args.target_build == source_build_mapped:
     print('Harmonizing -> {}'.format(args.target_build))
+    if args.author_reported is True:
+        tf_unmappable2authorreported = True # This was implemented to handle INDELs with locations/allele notations that differ from the ENSEMBL VCF
 else:
     print('Re-Mapping/Lifting + Harmonizing -> {}'.format(args.target_build))
 
@@ -248,18 +253,13 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0], disable=args.
                                                  alleles=[v['effect_allele']])
     hm = [hm_chr, hm_pos, hm_code]
 
-    # If the variant does not work revert to author-reported if possible
-    # This is required to handle INDELs with locations/allele notations that differ from the ENSEMBL VCF
     # ToDo handle INDEL lookups in VCFs (e.g. ENSEMBL) better
-    # if usingCohortVCF is False:
-    #     if hm_code < 0 and source_build_mapped == args.target_build:
-    #         if 'chr_name' and 'chr_position' in df_scoring.columns:
-    #             if (pd.isnull(v['chr_name']) is False) and (pd.isnull(v['chr_position']) is False):
-    #                 hm = [v['chr_name'], v['chr_position'], 0]  # Author-reported
     # ToDo (use allele frequency to resolve ambiguous variants hm_code=3)
 
     # Harmonize and write to file
-    v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID, vcfid=hm_vid, fixflips=args.skip_strandflips)
+    v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID, vcfid=hm_vid,
+                                    fixflips=args.skip_strandflips,
+                                    unmappable2authorreported=tf_unmappable2authorreported)
     counter_hmcodes[v_hm[-2]] += 1
     hm_out.write('\t'.join(v_hm) + '\n')
 
