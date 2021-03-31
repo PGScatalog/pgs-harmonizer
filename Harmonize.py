@@ -194,15 +194,18 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0], disable=args.
     # Step 1) ADD/UPDATE CHROMOSOME POSITION
     if mapping_ensembl and v['rsID'] in mapping_ensembl:
         v_map = mapping_ensembl.get(v['rsID'])
-        if v_map is not None:
-            hm_chr, hm_pos, hm_alleles = list(v_map.select_canonical_data(chromosomes))
-            hm_source = 'ENSEMBL'
-            current_rsID = v_map.id
-            if (args.addOtherAllele is True) and (pd.isnull(v.get('other_allele')) is True):
-                # Add other allele(s) based on ENSMEBL
-                hm_inferOtherAllele = v_map.infer_OtherAllele(v['effect_allele']) # Based on the rsID
-                v['other_allele'] = hm_inferOtherAllele
-            mapped_counter['mapped_rsID'] += 1
+    else:
+        v_map = None
+
+    if v_map is not None:
+        hm_chr, hm_pos, hm_alleles = list(v_map.select_canonical_data(chromosomes))
+        hm_source = 'ENSEMBL'
+        current_rsID = v_map.id
+        if (args.addOtherAllele is True) and (pd.isnull(v.get('other_allele')) is True):
+            # Add other allele(s) based on ENSMEBL
+            hm_inferOtherAllele = v_map.infer_OtherAllele(v['effect_allele']) # Based on the rsID
+            v['other_allele'] = hm_inferOtherAllele
+        mapped_counter['mapped_rsID'] += 1
     elif 'chr_name' and 'chr_position' in df_scoring.columns:
         if source_build_mapped == args.target_build:
             hm_chr = v['chr_name']
@@ -213,6 +216,7 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0], disable=args.
             hm_source = 'liftover'
             mapped_counter['mapped_lift'] += 1
     if all([x is None for x in [hm_chr, hm_pos]]):
+        hm_source = 'Unknown'
         mapped_counter['mapped_unable'] += 1
 
     # Step 2) CHECK VARIANT STATUS WITH RESPECT TO A VCF
@@ -247,12 +251,12 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0], disable=args.
     # If the variant does not work revert to author-reported if possible
     # This is required to handle INDELs with locations/allele notations that differ from the ENSEMBL VCF
     # ToDo handle INDEL lookups in VCFs (e.g. ENSEMBL) better
-    if usingCohortVCF is False:
-        if hm_code < 0 and source_build_mapped == args.target_build:
-            if 'chr_name' and 'chr_position' in df_scoring.columns:
-                hm = [v['chr_name'], v['chr_position'], 0]  # Author-reported
-
-    # ToDo (use allele frequency to resolve ambiguous variants)
+    # if usingCohortVCF is False:
+    #     if hm_code < 0 and source_build_mapped == args.target_build:
+    #         if 'chr_name' and 'chr_position' in df_scoring.columns:
+    #             if (pd.isnull(v['chr_name']) is False) and (pd.isnull(v['chr_position']) is False):
+    #                 hm = [v['chr_name'], v['chr_position'], 0]  # Author-reported
+    # ToDo (use allele frequency to resolve ambiguous variants hm_code=3)
 
     # Harmonize and write to file
     v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID, vcfid=hm_vid, fixflips=args.skip_strandflips)

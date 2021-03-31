@@ -182,7 +182,10 @@ class Harmonizer:
                 else:
                     o.append('')
             elif c in v:
-                o.append(str(v[c]).replace('None', ''))
+                val = str(v[c]).replace('None', '')
+                if val == 'nan':
+                    val = ''
+                o.append(val)
             else:
                 o.append('')
         return o

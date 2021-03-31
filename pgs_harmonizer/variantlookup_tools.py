@@ -40,6 +40,7 @@ class VCFResult:
                         if (eff in alleles_rc) and (oa in alleles_rc):
                             hm_isPalindromic = True
                     elif (eff in alleles_rc) and (oa in alleles_rc):
+                        hm_matchesVCF = True
                         hm_isFlipped = True
                 else:
                     if eff in alleles:
