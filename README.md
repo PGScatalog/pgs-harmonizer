@@ -12,6 +12,52 @@ variant batches using the Ensembl API. There are ways to speed this up by lookin
 - VCFs from Ensembl (in `/map/vcf_ref/`) or a specific cohort (in `/map/cohort_ref/`). Ensembl VCFs can be downloaded 
 by running the `DownloadMappings.py` script in the project directory.
 
+## Current options
+<pre>$ python ./Harmonize.py -h
+usage: Harmonize.py [-h] {HmPOS,HmVCF} ...
+
+Harmonize a PGS Catalog Scoring file (PGS######.txt.gz) to a specific genome
+build.
+
+positional arguments:
+  {HmPOS,HmVCF}  Harmonization Commands help
+    HmPOS        HmPOS - Harmonizing position information (adding/updating
+                 chr/pos information)
+    HmVCF        HmVCF - Checking positional information and/or adding
+                 other_alleles
+
+optional arguments:
+  -h, --help     show this help message and exit</pre>
+  
+<pre>python Harmonize.py HmPOS -h
+usage: Harmonize.py HmPOS [-h] [-loc_files DIR] [-source_build GENOMEBUILD]
+                          [-loc_hmoutput DIR] [--var2location] [--silent_tqdm]
+                          [--ignore_rsid] [--gzip]
+                          PGS###### GRCh3#
+
+positional arguments:
+  PGS######             PGS Catalog Score ID
+  GRCh3#                Target genome build choices: 'GRCh37'or GRCh38'
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -loc_files DIR        Root directory where the PGS files are located,
+                        otherwise assumed to be in: ../pgs_ScoringFiles/
+  -source_build GENOMEBUILD
+                        Source genome build [overwrites information in the
+                        scoring file header]
+  -loc_hmoutput DIR     Directory where the harmonization output will be saved
+                        (default: hm_coords/)
+  --var2location        Uses the annotations from the var2location.pl script
+                        (ENSEMBL SQL connection)
+  --silent_tqdm         Disables tqdm progress bar
+  --ignore_rsid         Ignores rsID mappings and harmonizes variants using
+                        only liftover
+  --gzip                Writes gzipped harmonized output
+(pgs-harmonizer) cmpc373:pgs-harmonizer sl925$ 
+</pre>
+
+## _OUTDATED:_ Examples
 To test that the pipeline can run try these commands on the test data in the project directory:
     
     # GRCh37
@@ -20,44 +66,6 @@ To test that the pipeline can run try these commands on the test data in the pro
     # GRCh38
     python Harmonize.py -id PGS000015 -loc_scorefiles test_data/ -build GRCh38 -loc_hmoutput test_data/
     python Harmonize.py -id PGS000065 -loc_scorefiles test_data/ -build GRCh38 -loc_hmoutput test_data/
-## Current options
-<pre>$ python ./Harmonize.py -h
-usage: Harmonize.py [-h] -id PGS###### -build GRCh## [-loc_scorefiles DIR]
-                    [-source_build GENOMEBUILD] [-cohort_vcf COHORT]
-                    [--var2location] [--addOtherAllele] [--ignore_rsid]
-                    [--gzip]
-
-Harmonize a PGS Catalog Scoring file (PGS######.txt.gz) to a specific genome
-build.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -id PGS######         PGS Catalog Score ID
-  -build GRCh##         Target genome build choices: 'GRCh37'or GRCh38'
-  -loc_scorefiles DIR   Root directory where the PGS files are located,
-                        otherwise assumed to be in: ../pgs_ScoringFiles/
-  -source_build GENOMEBUILD
-                        Source genome build [overwrites information in the
-                        scoring file header]
-  -cohort_vcf COHORT    Cohort VCF: Used to check if a variant is present in
-                        the genotyped/imputed variants for a cohort and add
-                        other allele when the information from ENSEMBL is
-                        ambiguous (multiple potential alleles)
-  -loc_hmoutput DIR     Directory where the harmonization output will be saved
-                        (default: hm_coords/)
-  --var2location        Uses the annotations from the var2location.pl script
-                        (ENSEMBL SQL connection)
-  --addOtherAllele      Adds a other_allele(s) column for PGS that only have a
-                        recorded effect_allele
-  --addVariantID        Returns a column with the ID from the VCF
-                        corresponding to the match variant/allele(s)
-  --ignore_rsid         Ignores rsID mappings and harmonizes variants using
-                        only liftover
-  --author_reported     Replaces unmappable variants (hm_code = -5) with the
-                        author-reported code (hm_code = 0)                       
-  --skip_strandflips    This flag will stop the harmonizing from trying to
-                        correct strand flips
-  --gzip                Writes gzipped harmonized output</pre>
 
 ## pseudocode (adapted from GWAS Catalog [README](https://github.com/EBISPOT/sum-stats-formatter/blob/master/harmonisation/README.md))
 <pre>READ/PARSE PGS Scoring File and headers
