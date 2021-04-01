@@ -217,11 +217,12 @@ for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0], disable=args.
             hm_pos = v['chr_position']
             hm_source = 'Author-reported'  # Author-reported
         elif (build_map is not None) and (build_map.chain is not None):
-            hm_chr, hm_pos, hm_liftover_multimaps = list(build_map.lift(v['chr_name'], v['chr_position']))  # liftover
-            hm_source = 'liftover'
-            mapped_counter['mapped_lift'] += 1
+            if (pd.isnull(v['chr_name']) is False) and (pd.isnull(v['chr_position']) is False):
+                hm_chr, hm_pos, hm_liftover_multimaps = list(build_map.lift(v['chr_name'], v['chr_position']))  # liftover
+                hm_source = 'liftover'
+                mapped_counter['mapped_lift'] += 1
+
     if all([x is None for x in [hm_chr, hm_pos]]):
-        hm_source = 'Unknown'
         mapped_counter['mapped_unable'] += 1
 
     # Step 2) CHECK VARIANT STATUS WITH RESPECT TO A VCF
