@@ -174,26 +174,41 @@ def clean_rsIDs(raw_rslist):
 
 def parse_var2location(loc_var2location_results, rsIDs = None):
     """Reads results of var2location.pl mapping into the same class as the ENSEMBL API results"""
-    mappings = pd.read_csv(loc_var2location_results, sep = '\t',
-                           names=['query_rsid', 'mapped_rsid', 'allele_string', 'seq_region_name', 'start', 'end'])
-
-    # Filters the UNION rsIDs to only return the relevant mappings as VariantResults
+    d_byq = {}
     if type(rsIDs) == list:
-        mappings = mappings.loc[mappings['query_rsid'].isin(rsIDs),]
+        rsIDs = set(rsIDs)
+        with open(loc_var2location_results, 'r') as infile:
+            for line in infile:
+                line = line.strip('\n').split('\t')
+                query_rsid = line[0]
+                if query_rsid in rsIDs: # Filters the UNION rsIDs to only return the relevant mappings as VariantResults
+                    if query_rsid in d_byq:
+                        d_byq[query_rsid].append(line)
+                    else:
+                        d_byq[query_rsid] = [line]
+    else:
+        with open(loc_var2location_results, 'r') as infile:
+            for line in infile:
+                line = line.strip('\n').split('\t')
+                query_rsid = line[0]
+                if query_rsid in d_byq:
+                    d_byq[query_rsid].append(line)
+                else:
+                    d_byq[query_rsid] = [line]
 
-    mappings['seq_region_name'] = mappings['seq_region_name'].astype('str') # Asssert character in case there are only chr numbers
     results = {}
+    for query_rsid, values in d_byq.items():
+        q_json = {'name': values[0][1],
+                  'mappings': []}
+        for line in values:
+            mappedloc = {'allele_string': line[2],
+                         'seq_region_name': line[3],
+                         'start': int(line[4]),
+                         'end': int(line[5])}
+            q_json['mappings'].append(mappedloc)
 
-    # Loop through results and parse to Variant
-    for query_rsid, maps in mappings.groupby('query_rsid'):
-        q_json = {'name': maps.iloc[0, 1], 'mappings': [dict(m[1]) for m in maps.iterrows()]}
-
-        vresult = VariationResult(maps.iloc[0,1], q_json)
-
-        # Return Results indexed by each rsID
-        syn = set(maps['mapped_rsid'])
-        syn.add(query_rsid)
-
-        results.update([(s, vresult) for s in syn])
+        results[query_rsid] = VariationResult(values[0][1], q_json)
+        if query_rsid != values[0][1]:
+            results[values[0][1]] = VariationResult(values[0][1], q_json)
 
     return results
