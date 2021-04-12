@@ -10,6 +10,11 @@ if os.path.isdir('map/vcf_ref/') is False:
 vcf_builds = ['GRCh37', 'GRCh38']
 vcf_chrs = list(range(1,23)) + ['X', 'Y', 'MT']
 
+for build in vcf_builds:
+    if os.path.isdir('map/vcf_ref/{}'.format(build)) is False:
+        os.mkdir('map/vcf_ref/{}'.format(build))
+        os.mkdir('map/vcf_ref/{}/cohort_ref'.format(build))
+
 # Download VCF files from ENSEMBL FTP
 ensembl_ftp = ftplib.FTP("ftp.ensembl.org")
 ensembl_ftp.login()

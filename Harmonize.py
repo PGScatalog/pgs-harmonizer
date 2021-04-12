@@ -22,9 +22,9 @@ parser_POS.add_argument("-source_build", dest="source_build",
                     metavar="GENOMEBUILD",
                     default=None, required=False)
 parser_POS.add_argument("-loc_hmoutput", dest="loc_outputs",
-                    help="Directory where the harmonization output will be saved (default: hm_coords/)",
+                    help="Directory where the harmonization output will be saved (default: PGS_HmPOS/)",
                     metavar="DIR",
-                    default='./hm_coords/', required=False)
+                    default='./PGS_HmPOS/', required=False)
 parser_POS.add_argument('--var2location',
                     help='Uses the annotations from the var2location.pl script (ENSEMBL SQL connection)',
                     action='store_true', required=False)
@@ -39,9 +39,11 @@ parser_POS.add_argument('--gzip', help='Writes gzipped harmonized output',
 parser_VCF = subparsers.add_parser('HmVCF', help='HmVCF - Checking positional information and/or adding other_alleles')
 parser_VCF.add_argument(dest="pgs_id", help="PGS Catalog Score ID", metavar="PGS######", type=str)
 parser_VCF.add_argument("-loc_files", dest="loc_scorefiles",
-                    help="Root directory where the PGS files are located, otherwise assumed to be in: ../pgs_ScoringFiles/",
+                    help="Root directory where the PGS files are located, otherwise assumed to be in: PGS_HmPOS/",
                     metavar="DIR",
-                    default='../pgs_ScoringFiles/', required=False)
+                    default='./PGS_HmPOS/', required=False)
+parser_POS.add_argument(dest="target_build", help="Target genome build choices: 'GRCh37'or GRCh38'", metavar="GRCh3#",
+                    choices=['GRCh37', 'GRCh38'])
 parser_VCF.add_argument("-cohort_vcf", dest="cohort_name",
                     help="Cohort VCF: Used to check if a variant is present in the genotyped/imputed variants for a "
                          "cohort and add other allele when the information from ENSEMBL is ambiguous "
@@ -109,6 +111,7 @@ def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOthe
         return pd.Series([hm_source, hm_rsID, hm_chr, hm_pos, hm_inferOtherAllele])
     else:
         return pd.Series([hm_source, hm_rsID, hm_chr, hm_pos])
+
 
 def run_HmPOS(args):
     # Module-specifc imports
@@ -220,22 +223,92 @@ def run_HmPOS(args):
                                                                                                                 liftchain=build_map,
                                                                                                                 isSameBuild=isSameBuild,
                                                                                                                 inferOtherAllele=True)
-    df_scoring.to_csv(loc_hm_out, index = False, sep='\t') # Write output using pandas
+    print('Mapped {} -> {}'.format(dict(df_scoring['hm_source'].value_counts()), loc_hm_out))
+    df_scoring.to_csv(loc_hm_out, index=False, sep='\t') # Write output using pandas
 
+
+def variant_HmVCF(v, vcfs_targetbuild, CohortVCF=None):
+    hm_source = v['hm_source']  # {'Author-reported', 'ENSEMBL Variation', 'liftover' }
+    hm_inferOtherAllele = None  # Field to capture the inferred other/reference allele
+    hm_matchesVCF = False  # T/F whether the variant is consistent with the VCF/Variant Lookup
+    hm_isPalindromic = False  # T/F whether the alleles are consistent with being palindromic
+    hm_isFlipped = False  # T/F whether the alleles are consistent with the negative strand (from VCF)
+    hm_vid = None
+    hm_code = None  # Derived from the above True/False information
+
+    if pd.isnull(v['hm_source']) is False:
+        v_records = vcfs_targetbuild.vcf_lookup(chromosome=v['hm_chr'], position=v['hm_pos'], rsid=v['hm_rsID'])
+        if CohortVCF is not None:
+            hm_source += '+{}'.format(CohortVCF)
+
+        if 'other_allele' in v:
+            if (pd.isnull(v['other_allele']) is False) and ('/' in v['other_allele']) is False:
+                hm_TF, hm_vid = v_records.check_alleles(eff=v['effect_allele'],
+                                                        oa=v['other_allele'])
+                hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
+            else:
+                hm_inferOtherAllele, hm_TF, hm_vid, hm_code = v_records.infer_OtherAllele(eff=v['effect_allele'],
+                                                                                          oa_ensembl=v['hm_inferOtherAllele'])
+                hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
+        else:
+            hm_TF, hm_vid = v_records.check_alleles(eff=v['effect_allele'])
+            hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
+
+    if hm_code is None:
+        if 'other_allele' in v:
+            hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,
+                                                 alleles=[v['effect_allele'], v['other_allele']])
+        else:
+            hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,
+                                                 alleles=[v['effect_allele']])
+
+    # ToDo handle INDEL lookups in VCFs (e.g. ENSEMBL) better
+    # ToDo (use allele frequency to resolve ambiguous variants hm_code=3)
+
+    return pd.Series([hm_source, hm_vid, hm_code])
 
 
 def run_HmVCF(args):
     from pgs_harmonizer.variantlookup_tools import VCFs
 
+    ## Set I/O File focations
+    # Scoring file location
+    if 'loc_scorefiles' in args:
+        if not args.loc_scorefiles.endswith('/'):
+            args.loc_scorefiles += '/'
+        loc_scorefile = args.loc_scorefiles + args.pgs_id + '.txt.gz'
+    else:
+        loc_scorefile = 'PGS_HmPOS/{}_hmPOS{}.txt.gz'.format(args.pgs_id, args.target_build)
+    try:
+        print('Reading Score File')
+        header, df_scoring = read_scorefile(loc_scorefile)
+    except:
+        print('There was an error opening the file!')
+        raise IOError
+
     # Load Variant References (VCF & Cohort)
-    usingCohortVCF = False
+    usingCohortVCF = None
     if args.cohort_name is not None:
         vcfs_targetbuild = VCFs(build=args.target_build, cohort_name=args.cohort_name)
-        usingCohortVCF = True
+        usingCohortVCF = args.cohort_name
         args.addOtherAllele = True
     else:
         vcfs_targetbuild = VCFs(build=args.target_build)  # ENSEMBL VCF
+    if (vcfs_targetbuild.VCF is None) and (len(vcfs_targetbuild.by_chr) == 0):
+        print('ERROR: Could not find the VCF')
+        raise IOError
 
+    # Apply the harmonization to the df
+    df_scoring[['hm_source', 'hm_vid', 'hm_code']] = df_scoring.progress_apply(variant_HmVCF, axis=1,
+                                                                               vcfs_targetbuild=vcfs_targetbuild,
+                                                                               CohortVCF=usingCohortVCF)
+    # ToDo Fix StrandFlips
+    # ToDo unmappable2authorreported
+
+    # Write Output
+    # ToDo Summarize Hm_Codes
+    # ToDo Write Output
+    print(df_scoring.head())
     return
 
 

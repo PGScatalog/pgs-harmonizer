@@ -38,8 +38,10 @@ def read_scorefile(loc_scorefile):
         f = open(loc_scorefile, 'rt')
 
     header = {}
-    for line in f:
-        line = line.strip()
+    lastline = '#'
+    while lastline.startswith('#'):
+        lastline = f.readline()
+        line = lastline.strip()
         if line.startswith('#'):
             if '=' in line:
                 line = line[1:].split('=')
@@ -47,7 +49,7 @@ def read_scorefile(loc_scorefile):
                 header[remap_header[field]] = val # ToDo change once Scoring File headers are fixed
     f.close()
 
-    if header['genome_build'] == 'NR':
+    if ('genome_build' in header) and (header['genome_build'] == 'NR'):
         header['genome_build'] = None
 
     df_scoring = pd.read_table(loc_scorefile, float_precision='round_trip', comment='#',
@@ -57,10 +59,16 @@ def read_scorefile(loc_scorefile):
     # Make sure certain columns maintain specific datatypes
     if 'reference_allele' in df_scoring.columns:
         df_scoring = df_scoring.rename(columns={"reference_allele": "other_allele"})
+
     if 'chr_name' in df_scoring.columns:
         df_scoring['chr_name'] = df_scoring['chr_name'].astype('str') # Asssert character in case there are only chr numbers
+    if 'hm_chr' in df_scoring.columns:
+        df_scoring['hm_chr'] = df_scoring['hm_chr'].astype('str') # Asssert character in case there are only chr numbers
+
     if 'chr_position' in df_scoring.columns:
         df_scoring.loc[df_scoring['chr_position'].isnull() == False, 'chr_position'] = [conv2int(x) for x in df_scoring.loc[df_scoring['chr_position'].isnull() == False, 'chr_position']]
+    if 'hm_pos' in df_scoring.columns:
+        df_scoring.loc[df_scoring['hm_pos'].isnull() == False, 'hm_pos'] = [conv2int(x) for x in df_scoring.loc[df_scoring['hm_pos'].isnull() == False, 'hm_pos']]
 
     return(header, df_scoring)
 
