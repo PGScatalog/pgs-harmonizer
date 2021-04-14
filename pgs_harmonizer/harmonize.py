@@ -1,17 +1,21 @@
 import pandas as pd
+import numpy as np
 import re
 import json
 import gzip
 
 remap_header = {
-    'PGS ID' : 'pgs_id',
-    'PGS Name' : 'pgs_name',
-    'Reported Trait' : 'trait_reported',
-    'Original Genome Build' : 'genome_build',
-    'Number of Variants' : 'variants_number',
-    'PGP ID' : 'pgp_id',
-    'Citation' : 'citation',
-    'LICENSE' : 'pgs_license'
+    'PGS ID': 'pgs_id',
+    'PGS Name': 'pgs_name',
+    'Reported Trait': 'trait_reported',
+    'Original Genome Build': 'genome_build',
+    'Number of Variants': 'variants_number',
+    'PGP ID': 'pgp_id',
+    'Citation': 'citation',
+    'LICENSE': 'pgs_license',
+    # Harmonization related
+    'HmPOS Build': 'HmPOS_build',
+    'HmPOS Date':'HmPOS_date'
 } # ToDo remove once Scoring File headers are fixed
 
 
@@ -88,6 +92,51 @@ def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,all
                 if A in rc_alleles:
                     hm_code = 3
     return hm_code
+
+
+def FixStrandFlips(df):
+    df['fixedStrandFlip'] = np.nan
+    df.loc[df['hm_code'] == -4, 'effect_allele'] = df.loc[df['hm_code'] == -4, 'effect_allele'].apply(reversecomplement)
+    if 'other_allele' in df_scoring.columns:
+        df.loc[df['hm_code'] == -4, 'other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele'].apply(reversecomplement)
+    df.loc[df['hm_code'] == -4, 'fixedStrandFlip'] = True
+    return df
+
+
+def unmappable2authorreported(df):
+    # ToDo unmappable2authorreported
+    return df
+
+def create_scoringfileheader(h):
+    """Function to extract score & publication information for the PGS Catalog Scoring File commented header"""
+    # Recreate original header
+    lines = [
+        '### PGS CATALOG SCORING FILE - see www.pgscatalog.org/downloads/#dl_ftp for additional information',
+        '## POLYGENIC SCORE (PGS) INFORMATION',
+        '# PGS ID = {}'.format(h['pgs_id'])
+    ]
+    if 'pgs_name' in h:
+        lines.append('# PGS Name = {}'.format(h['pgs_name']))
+    lines += ['# Reported Trait = {}'.format(h['trait_reported']),
+              '# Original Genome Build = {}'.format(str(h['genome_build']).replace('None', 'NR')),
+              '# Number of Variants = {}'.format(h['variants_number']),
+              '## SOURCE INFORMATION',
+              '# PGP ID = {}'.format(h['pgp_id']),
+              '# Citation = {}'.format(h['citation'])
+    ]
+    if 'pgs_license' in h:
+        lines.append('# LICENSE = {}'.format(h['pgs_license']))  # Append to header
+
+    # Add Harmonization Details
+    ## HmPOS
+    if 'HmPOS_build' in h:
+        lines += ['## HARMONIZATION DETAILS',
+                  '# HmPOS Build = {}'.format(h['HmPOS_build']),
+                  '# HmPOS Date = {}'.format(h['HmPOS_date'])
+                  ]
+    return lines
+
+
 
 class Harmonizer:
     """Class to select and harmonize variant locations in a PGS Scoring file."""
