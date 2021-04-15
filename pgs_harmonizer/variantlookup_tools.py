@@ -202,4 +202,4 @@ class VCFs:
         return VCFResult(chromosome, position, self.build, r_lookup)
 
 
-#def guess_build(loc_file, vcf_root):
+# def guess_build(loc_file, vcf_root):

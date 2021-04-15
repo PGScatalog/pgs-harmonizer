@@ -63,7 +63,7 @@ parser_VCF.add_argument('--author_reported',
                         action='store_true', required=False)
 parser_VCF.add_argument('--skip_strandflips',
                         help='This flag will stop the harmonizing from trying to correct strand flips',
-                        action='store_false', required=False)
+                        action='store_true', required=False)
 parser_VCF.add_argument('--silent_tqdm', help='Disables tqdm progress bar',
                         action='store_true', required=False)
 parser_VCF.add_argument('--gzip', help='Writes gzipped harmonized output',
@@ -312,7 +312,7 @@ def run_HmVCF(args):
     if 'loc_scorefiles' in args:
         if not args.loc_scorefiles.endswith('/'):
             args.loc_scorefiles += '/'
-        loc_scorefile = args.loc_scorefiles + args.pgs_id + '.txt.gz'
+        loc_scorefile = args.loc_scorefiles + '{}_hmPOS{}.txt.gz'.format(args.pgs_id, args.target_build)
     else:
         loc_scorefile = 'PGS_HmPOS/{}_hmPOS{}.txt.gz'.format(args.pgs_id, args.target_build)
     try:
@@ -335,6 +335,7 @@ def run_HmVCF(args):
         raise IOError
 
     # Apply the harmonization to the df
+    tqdm.pandas()
     if args.addOtherAllele is True:
         df_scoring[['hm_source', 'hm_vid', 'hm_code', 'other_allele']] = df_scoring.progress_apply(variant_HmVCF, axis=1,
                                                                                                    vcfs_targetbuild=vcfs_targetbuild,
@@ -347,15 +348,30 @@ def run_HmVCF(args):
                                                                                    returnOtherAllele=False)
     # Post-Harmonization Fixes
     if args.skip_strandflips is False:
-        df_scoring = FixStrandFlips(df_scoring)
+        df_scoring = FixStrandFlips(df_scoring) # also returns new column 'hm_fixedStrandFlip'
 
-    if args.author_reported is True:
-        df_scoring = unmappable2authorreported(df_scoring) # ToDo unmappable2authorreported
+    # ToDo unmappable2authorreported
+    # if args.author_reported is True:
+    #     df_scoring = unmappable2authorreported(df_scoring)
 
-    # Write Output
-    # ToDo Summarize Hm_Codes
+    # Summarize Hm_Codes
+    print(df_scoring['hm_code'].value_counts())
+
+    # Format Output
+    header['HmVCF_date'] = str(datetime.date(datetime.now()))
+    if usingCohortVCF is not None:
+        header['HmVCF_ref'] = usingCohortVCF
+    else:
+        header['HmVCF_ref'] = 'Ensembl Variation / dbSNP'#ToDo Consider adding information about the ENSEMBL build?
+
     # ToDo Write Output
     print(df_scoring.head())
+    print(df_scoring.tail())
+    hm_formatter = Harmonizer(df_scoring.columns, returnVariantID=args.addVariantID)
+    hm_df = df_scoring.progress_apply(hm_formatter.format_line, axis=1,
+                                      original_build=header['genome_build'])
+    hm_df.columns = hm_formatter.cols_order
+    hm_df.to_csv('TestHMVCF.csv', index=False)
     return
 
 
@@ -366,118 +382,3 @@ if __name__ == "__main__":
         run_HmVCF(args)
     else:
         print('Not a valid method, try running: `python Harmonize.py -h` for valid options and more details')
-
-# print('Starting Mapping')
-# mapped_counter = Counter()
-# counter_hmcodes = Counter()
-#
-# # Create harmonization/output formatting objects
-# if args.gzip is True:
-#     hm_out = gzip.open(loc_hm_out, 'wt')
-# else:
-#     hm_out = open(loc_hm_out, 'w')
-#
-# # Check if extra columns (other_allele) will need to be added
-# if (args.addOtherAllele is True) and (('other_allele' in df_scoring.columns) is False):
-#     print('! Will INFER Reference/Other Allele')
-#     df_scoring['other_allele'] = None
-# hm_formatter = Harmonizer(df_scoring.columns, ensureOtherAllele=args.addOtherAllele, returnVariantID=args.addVariantID)
-# hm_out.write('\t'.join(hm_formatter.cols_order) + '\n')
-#
-# #Loop through variants
-# for i, v in tqdm(df_scoring.iterrows(), total=df_scoring.shape[0], disable=args.silent_tqdm):
-#     v = dict(v)
-#     # Variant harmonization information
-#     current_rsID = None
-#     hm_chr = None
-#     hm_pos = None
-#     hm_source = None  # {'Author-reported', 'ENSEMBL Variation', 'liftover' }
-#     hm_alleles = []
-#     hm_matchesVCF = False # T/F whether the variant is consistent with the VCF/Variant Lookup
-#     hm_isPalindromic = False  # T/F whether the alleles are consistent with being palindromic
-#     hm_isFlipped = False  # T/F whether the alleles are consistent with the negative strand (from VCF)
-#     hm_liftover_multimaps = None  # T/F whether the position has a unique liftover patch; None if no liftover done
-#     hm_inferOtherAllele = None  # Field to capture the inferred other/reference allele
-#     hm_vid = None
-#     hm_code = None  # Derived from the above True/False information
-#
-#     # Step 1) ADD/UPDATE CHROMOSOME POSITION
-#     if mapping_ensembl and v['rsID'] in mapping_ensembl:
-#         v_map = mapping_ensembl.get(v['rsID'])
-#     else:
-#         v_map = None
-#
-#     if v_map is not None:
-#         hm_chr, hm_pos, hm_alleles = list(v_map.select_canonical_data(chromosomes))
-#         hm_source = 'ENSEMBL'
-#         current_rsID = v_map.id
-#         if (args.addOtherAllele is True) and (pd.isnull(v.get('other_allele')) is True):
-#             # Add other allele(s) based on ENSMEBL
-#             hm_inferOtherAllele = v_map.infer_OtherAllele(v['effect_allele']) # Based on the rsID
-#             v['other_allele'] = hm_inferOtherAllele
-#         mapped_counter['mapped_rsID'] += 1
-#     elif 'chr_name' and 'chr_position' in df_scoring.columns:
-#         if source_build_mapped == args.target_build:
-#             hm_chr = v['chr_name']
-#             hm_pos = v['chr_position']
-#             hm_source = 'Author-reported'  # Author-reported
-#         elif (build_map is not None) and (build_map.chain is not None):
-#             hm_chr, hm_pos, hm_liftover_multimaps = list(build_map.lift(v['chr_name'], v['chr_position']))  # liftover
-#             hm_source = 'liftover'
-#             mapped_counter['mapped_lift'] += 1
-#     if all([x is None for x in [hm_chr, hm_pos]]):
-#         hm_source = 'Unknown'
-#         mapped_counter['mapped_unable'] += 1
-#
-#     # Step 2) CHECK VARIANT STATUS WITH RESPECT TO A VCF
-#     if hm_source is not None:
-#         v_records = vcfs_targetbuild.vcf_lookup(chromosome=hm_chr, position=hm_pos, rsid=current_rsID)
-#         if usingCohortVCF:
-#             hm_source += '+{}'.format(args.cohort_name)
-#
-#         if 'other_allele' in v:
-#             if (pd.isnull(v['other_allele']) is False) and ('/' in v['other_allele']) is False:
-#                 hm_TF, hm_vid = v_records.check_alleles(eff=v['effect_allele'],
-#                                                         oa=v['other_allele'])
-#                 hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
-#             else:
-#                 hm_inferOtherAllele, hm_TF, hm_vid, hm_code = v_records.infer_OtherAllele(eff=v['effect_allele'],
-#                                                                                           oa_ensembl=hm_inferOtherAllele)
-#                 v['other_allele'] = hm_inferOtherAllele
-#                 hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
-#         else:
-#             hm_TF, hm_vid = v_records.check_alleles(eff=v['effect_allele'])
-#             hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
-#
-#     if hm_code is None:
-#         if 'other_allele' in v:
-#             hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,
-#                                                  alleles=[v['effect_allele'], v['other_allele']])
-#         else:
-#             hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,
-#                                                  alleles=[v['effect_allele']])
-#     hm = [hm_chr, hm_pos, hm_code]
-#
-#     # ToDo handle INDEL lookups in VCFs (e.g. ENSEMBL) better
-#     # ToDo (use allele frequency to resolve ambiguous variants hm_code=3)
-#
-#     # Harmonize and write to file
-#     v_hm = hm_formatter.format_line(v, hm, hm_source, source_build, rsid=current_rsID, vcfid=hm_vid,
-#                                     fixflips=args.skip_strandflips,
-#                                     unmappable2authorreported=tf_unmappable2authorreported)
-#     counter_hmcodes[v_hm[-2]] += 1
-#     hm_out.write('\t'.join(v_hm) + '\n')
-#
-#     # if (i % 250000 == 0) and (i != 0):
-#     #     print('Mapped {} / {} lines'.format(i, df_scoring.shape[0]))
-#
-# hm_out.close()
-#
-# if mapped_counter['mapped_rsID'] > 0:
-#     print('{} lines mapped by rsID'.format(mapped_counter['mapped_rsID']))
-# if mapped_counter['mapped_lift'] > 0:
-#     print('{} lines mapped by liftover'.format(mapped_counter['mapped_lift']))
-# if mapped_counter['mapped_author'] > 0:
-#     print('{} lines used author-reported mappings'.format(mapped_counter['mapped_author']))
-# print(counter_hmcodes)
-# print('Mapping complete')
