@@ -60,19 +60,17 @@ def read_scorefile(loc_scorefile):
 
     df_scoring = pd.read_table(loc_scorefile, float_precision='round_trip', comment='#',
                                dtype = {'chr_position' : 'object',
-                                        'chr_name' : 'object'})
+                                        'chr_name' : 'object',
+                                        'hm_chr': 'object',
+                                        'hm_pos': 'object'})
 
     # Make sure certain columns maintain specific datatypes
     if 'reference_allele' in df_scoring.columns:
         df_scoring = df_scoring.rename(columns={"reference_allele": "other_allele"})
 
-    if 'hm_chr' in df_scoring.columns:
-        df_scoring['hm_chr'] = df_scoring['hm_chr'].astype('str') # Asssert character in case there are only chr numbers
-
-    if 'chr_position' in df_scoring.columns:
-        df_scoring.loc[df_scoring['chr_position'].isnull() == False, 'chr_position'] = [conv2int(x) for x in df_scoring.loc[df_scoring['chr_position'].isnull() == False, 'chr_position']]
-    if 'hm_pos' in df_scoring.columns:
-        df_scoring.loc[df_scoring['hm_pos'].isnull() == False, 'hm_pos'] = [conv2int(x) for x in df_scoring.loc[df_scoring['hm_pos'].isnull() == False, 'hm_pos']]
+    for poscol in ['chr_position', 'hm_pos']:
+        if poscol in df_scoring.columns:
+            df_scoring.loc[df_scoring[poscol].isnull() == False, poscol] = [conv2int(x) for x in df_scoring.loc[df_scoring[poscol].isnull() == False, poscol]]
 
     return(header, df_scoring)
 
@@ -132,13 +130,13 @@ def FixStrandFlips(df):
     df['hm_fixedStrandFlip'] = np.nan
 
     # Correct the effect_allele
-    df['reported_effect_allele'] = np.nan
+    df['hm_reported_effect_allele'] = np.nan
     df.loc[df['hm_code'] == -4, 'hm_reported_effect_allele'] = df.loc[df['hm_code'] == -4, 'effect_allele']
     df.loc[df['hm_code'] == -4, 'effect_allele'] = df.loc[df['hm_code'] == -4, 'effect_allele'].apply(reversecomplement)
 
     # Correct the other_allele
     if 'other_allele' in df.columns:
-        df['reported_other_allele'] = np.nan
+        df['hm_reported_other_allele'] = np.nan
         df.loc[df['hm_code'] == -4, 'hm_reported_other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele']
         df.loc[df['hm_code'] == -4, 'other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele'].apply(reversecomplement)
 

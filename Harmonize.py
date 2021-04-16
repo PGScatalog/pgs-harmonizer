@@ -42,6 +42,10 @@ parser_VCF.add_argument("-loc_files", dest="loc_scorefiles",
                         help="Root directory where the PGS files are located, otherwise assumed to be in: PGS_HmPOS/",
                         metavar="DIR",
                         default='./PGS_HmPOS/', required=False)
+parser_VCF.add_argument("-loc_hmoutput", dest="loc_outputs",
+                        help="Directory where the harmonization output will be saved (default: PGS_HmPOS/)",
+                        metavar="DIR",
+                        default='./PGS_HmVCF/', required=False)
 parser_VCF.add_argument(dest="target_build",
                         help="Target genome build choices: 'GRCh37'or GRCh38'",
                         metavar="GRCh3#",
@@ -73,6 +77,7 @@ args = parser.parse_args()
 
 
 def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOtherAllele=False):
+    """Finds Harmonized Position (HmPOS) information for a variant using Ensembl variation/liftover"""
     hm_source = ''  # {'Author-reported', 'ENSEMBL Variation', 'liftover' }
     hm_rsID = ''
     hm_chr = ''
@@ -250,6 +255,7 @@ def run_HmPOS(args):
 
 
 def variant_HmVCF(v, vcfs_targetbuild, CohortVCF=None, returnOtherAllele=True):
+    """Determines whether the variant maps correctly to a reference VCF"""
     hm_source = v['hm_source']  # {'Author-reported', 'ENSEMBL Variation', 'liftover' }
     hm_matchesVCF = False  # T/F whether the variant is consistent with the VCF/Variant Lookup
     hm_isPalindromic = False  # T/F whether the alleles are consistent with being palindromic
@@ -321,18 +327,29 @@ def run_HmVCF(args):
     except:
         print('There was an error opening the file!')
         raise IOError
+    # Define output location
+    ofolder = args.loc_outputs
+    if ofolder.endswith('/'):
+        ofolder = ofolder[:-1]
+    if os.path.isdir(ofolder) is False:
+        os.mkdir(ofolder)
 
     # Load Variant References (VCF & Cohort)
     usingCohortVCF = None
     if args.cohort_name is not None:
         vcfs_targetbuild = VCFs(build=args.target_build, cohort_name=args.cohort_name)
         usingCohortVCF = args.cohort_name
+        loc_hm_out = '{}/{}_hmVCF{}_{}.txt'.format(ofolder, args.pgs_id, args.target_build, usingCohortVCF)
         args.addOtherAllele = True
     else:
         vcfs_targetbuild = VCFs(build=args.target_build)  # ENSEMBL VCF
+        loc_hm_out = '{}/{}_hmVCF{}.txt'.format(ofolder, args.pgs_id, args.target_build)
     if (vcfs_targetbuild.VCF is None) and (len(vcfs_targetbuild.by_chr) == 0):
         print('ERROR: Could not find the VCF')
         raise IOError
+
+    if args.gzip is True:
+        loc_hm_out += '.gz'
 
     # Apply the harmonization to the df
     tqdm.pandas()
@@ -355,7 +372,7 @@ def run_HmVCF(args):
     #     df_scoring = unmappable2authorreported(df_scoring)
 
     # Summarize Hm_Codes
-    print(df_scoring['hm_code'].value_counts())
+    print('Harmonized {} -> {}'.format(dict(df_scoring['hm_code'].value_counts()), loc_hm_out))
 
     # Format Output
     header['HmVCF_date'] = str(datetime.date(datetime.now()))
@@ -364,14 +381,22 @@ def run_HmVCF(args):
     else:
         header['HmVCF_ref'] = 'Ensembl Variation / dbSNP'#ToDo Consider adding information about the ENSEMBL build?
 
-    # ToDo Write Output
-    print(df_scoring.head())
-    print(df_scoring.tail())
     hm_formatter = Harmonizer(df_scoring.columns, returnVariantID=args.addVariantID)
-    hm_df = df_scoring.progress_apply(hm_formatter.format_line, axis=1,
-                                      original_build=header['genome_build'])
-    hm_df.columns = hm_formatter.cols_order
-    hm_df.to_csv('TestHMVCF.csv', index=False)
+    df_scoring = df_scoring.progress_apply(hm_formatter.format_line, axis=1,
+                                           original_build=header['genome_build'])
+    df_scoring.columns = hm_formatter.cols_order
+
+    # Write Output
+    # print(hm_df.head())
+    # print(hm_df.tail())
+    if args.gzip is True:
+        hm_out = gzip.open(loc_hm_out, 'wt')
+    else:
+        hm_out = open(loc_hm_out, 'w')
+    hm_out.write('\n'.join(create_scoringfileheader(header)))
+    hm_out.write('\n')
+    df_scoring.to_csv(hm_out, mode='a', index=False, sep='\t')  # Write output using pandas
+    hm_out.close()  # Close file
     return
 
 
