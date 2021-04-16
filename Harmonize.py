@@ -364,6 +364,8 @@ def run_HmVCF(args):
                                                                                    CohortVCF=usingCohortVCF,
                                                                                    returnOtherAllele=False)
     # Post-Harmonization Fixes
+    df_scoring.loc[df_scoring['hm_code'].isnull() == False, 'hm_code'] = [conv2int(x) for x in df_scoring.loc[
+                                                                          df_scoring['hm_code'].isnull() == False, 'hm_code']]
     if args.skip_strandflips is False:
         df_scoring = FixStrandFlips(df_scoring) # also returns new column 'hm_fixedStrandFlip'
 

@@ -203,7 +203,7 @@ class Harmonizer:
                         hm_info['fixedStrandFlip'] = False
 
         # Create Output
-        l_output[self.cols_order.index('hm_code')] = hm_code
+
 
         if original_build is None:
             original_build = 'NR'
@@ -224,7 +224,7 @@ class Harmonizer:
                 elif colname == 'variant_id':
                     l_output[i] = v['hm_vid']
                 elif colname == 'hm_code':
-                    l_output[i] = hm_code
+                    l_output[i] = str(hm_code)
                 elif colname == 'hm_info':
                     if len(hm_info) > 0:
                         l_output[i] = json.dumps(hm_info)
@@ -256,6 +256,8 @@ class Harmonizer:
                         hm_info['variant_id'] = v['hm_vid']
                     elif colname == 'hm_info':
                         l_output[i] = json.dumps(hm_info)
+                    elif colname == 'hm_code':
+                        l_output[i] = str(hm_code)
                     else:
                         l_output[i] = v[colname]
 

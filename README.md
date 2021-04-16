@@ -29,7 +29,7 @@ positional arguments:
 optional arguments:
   -h, --help     show this help message and exit</pre>
   
-<pre>python Harmonize.py HmPOS -h
+<pre>$ python ./Harmonize.py HmPOS -h
 usage: Harmonize.py HmPOS [-h] [-loc_files DIR] [-source_build GENOMEBUILD]
                           [-loc_hmoutput DIR] [--var2location] [--silent_tqdm]
                           [--ignore_rsid] [--gzip]
@@ -47,30 +47,70 @@ optional arguments:
                         Source genome build [overwrites information in the
                         scoring file header]
   -loc_hmoutput DIR     Directory where the harmonization output will be saved
-                        (default: hm_coords/)
+                        (default: PGS_HmPOS/)
   --var2location        Uses the annotations from the var2location.pl script
                         (ENSEMBL SQL connection)
   --silent_tqdm         Disables tqdm progress bar
   --ignore_rsid         Ignores rsID mappings and harmonizes variants using
                         only liftover
-  --gzip                Writes gzipped harmonized output
-(pgs-harmonizer) cmpc373:pgs-harmonizer sl925$ 
+  --gzip                Writes gzipped harmonized output</pre>
+
+<pre>$ python ./Harmonize.py HmVCF -h
+usage: Harmonize.py HmVCF [-h] [-loc_files DIR] [-loc_hmoutput DIR]
+                          [-cohort_vcf COHORT] [--addOtherAllele]
+                          [--addVariantID] [--author_reported]
+                          [--skip_strandflips] [--silent_tqdm] [--gzip]
+                          PGS###### GRCh3#
+
+positional arguments:
+  PGS######           PGS Catalog Score ID
+  GRCh3#              Target genome build choices: 'GRCh37'or GRCh38'
+
+optional arguments:
+  -h, --help          show this help message and exit
+  -loc_files DIR      Root directory where the PGS files are located,
+                      otherwise assumed to be in: PGS_HmPOS/
+  -loc_hmoutput DIR   Directory where the harmonization output will be saved
+                      (default: PGS_HmPOS/)
+  -cohort_vcf COHORT  Cohort VCF: Used to check if a variant is present in the
+                      genotyped/imputed variants for a cohort and add other
+                      allele when the information from ENSEMBL is ambiguous
+                      (multiple potential alleles)
+  --addOtherAllele    Adds a other_allele(s) column for PGS that only have a
+                      recorded effect_allele
+  --addVariantID      Returns a column with the ID from the VCF corresponding
+                      to the match variant/allele(s)
+  --author_reported   Replaces unmappable variants (hm_code = -5) with the
+                      author-reported code (hm_code = 0)
+  --skip_strandflips  This flag will stop the harmonizing from trying to
+                      correct strand flips
+  --silent_tqdm       Disables tqdm progress bar
+  --gzip              Writes gzipped harmonized output
 </pre>
 
-## _OUTDATED:_ Examples
+## Examples
 To test that the pipeline can run try these commands on the test data in the project directory:
     
-    # GRCh37
-    python Harmonize.py -id PGS000015 -loc_scorefiles test_data/ -build GRCh37 -loc_hmoutput test_data/
-    python Harmonize.py -id PGS000065 -loc_scorefiles test_data/ -build GRCh37 -loc_hmoutput test_data/
-    # GRCh38
-    python Harmonize.py -id PGS000015 -loc_scorefiles test_data/ -build GRCh38 -loc_hmoutput test_data/
-    python Harmonize.py -id PGS000065 -loc_scorefiles test_data/ -build GRCh38 -loc_hmoutput test_data/
-
+    # PGS000015
+    ## GRCh37
+    python Harmonize.py HmPOS PGS000015 GRCh37 -loc_files ./test_data/ --gzip
+    python Harmonize.py HmVCF PGS000015 GRCh37 --gzip
+    ## GRCh38
+    python Harmonize.py HmPOS PGS000015 GRCh38 -loc_files ./test_data/ --gzip
+    python Harmonize.py HmVCF PGS000015 GRCh38 --gzip
+    
+    # PGS000065
+    ## GRCh37
+    python Harmonize.py HmPOS PGS000065 GRCh37 -loc_files ./test_data/ --gzip
+    python Harmonize.py HmVCF PGS000065 GRCh37 --gzip
+    ## GRCh38
+    python Harmonize.py HmPOS PGS000065 GRCh38 -loc_files ./test_data/ --gzip
+    python Harmonize.py HmVCF PGS000065 GRCh38 --gzip
+   
 ## pseudocode (adapted from GWAS Catalog [README](https://github.com/EBISPOT/sum-stats-formatter/blob/master/harmonisation/README.md))
 <pre>READ/PARSE PGS Scoring File and headers
 
-FOR each variant in file
+FOR each variant
     IF RSID maps to genomic location in Ensembl THEN
         update locations based on Ensembl mapping
         IF RSID != original RSID THEN
