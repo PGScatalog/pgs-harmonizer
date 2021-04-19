@@ -236,19 +236,21 @@ class Harmonizer:
                 hm_info['hm_chr'] = v['hm_chr']
             if pd.isnull(v['hm_pos']) is False:
                 hm_info['hm_pos'] = v['hm_pos']
-            rsid = v['hm_rsID']
-            if pd.isnull(rsid) is False:  # mapped by rsID
-                hm_info['rsID'] = rsid
-                if rsid != v['rsID']:
-                    hm_info['previous_rsID'] = v['rsID']
-            else:
-                hm_info['rsID'] = v['rsID']
 
             for colname in self.hm_fields:
                 if colname in v:
-                    val = v[colname]
-                    if pd.isnull(val) is False:
-                        hm_info[colname] = val
+                    if colname is 'rsID':
+                        rsid = v['hm_rsID']
+                        if pd.isnull(rsid) is False:  # mapped by rsID
+                            hm_info['rsID'] = rsid
+                            if rsid != v['rsID']:
+                                hm_info['previous_rsID'] = v['rsID']
+                        else:
+                            hm_info['rsID'] = v['rsID']
+                    else:
+                        val = v[colname]
+                        if pd.isnull(val) is False:
+                            hm_info[colname] = val
 
             for i, colname in enumerate(self.cols_order):
                 if colname not in self.hm_fields:
