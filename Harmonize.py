@@ -1,4 +1,4 @@
-import argparse, os, sys, gzip
+import argparse, os, sys, gzip, itertools
 from tqdm import tqdm
 from pgs_harmonizer.harmonize import *
 from datetime import datetime
@@ -75,6 +75,9 @@ parser_VCF.add_argument('--gzip', help='Writes gzipped harmonized output',
 
 args = parser.parse_args()
 
+class HarmonizationError(Exception):
+    """Base class for exceptions in this module."""
+    pass
 
 def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOtherAllele=False):
     """Finds Harmonized Position (HmPOS) information for a variant using Ensembl variation/liftover"""
@@ -108,7 +111,7 @@ def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOthe
             if (pd.isnull(v['chr_name']) is False) and (pd.isnull(v['chr_position']) is False):
                 hm_chr, hm_pos, hm_liftover_multimaps = list(liftchain.lift(v['chr_name'], v['chr_position']))  # liftover
                 hm_source = 'liftover'
-    if all([x is None for x in [hm_chr, hm_pos]]):
+    if all([x is '' for x in [hm_chr, hm_pos]]):
         hm_source = 'Unknown'
 
     if hm_pos != '':
@@ -122,7 +125,7 @@ def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOthe
         return pd.Series([hm_source, hm_rsID, hm_chr, hm_pos])
 
 
-def run_HmPOS(args):
+def run_HmPOS(args, chunksize=100000):
     # Module-specifc imports
     from pgs_harmonizer.ensembl_tools import ensembl_post, clean_rsIDs, parse_var2location
     from pgs_harmonizer.liftover_tools import liftover, map_release
@@ -148,6 +151,7 @@ def run_HmPOS(args):
     # Read Score File
     print('Reading Score File')
     header, df_scoring = read_scorefile(loc_scorefile)
+    tqdm.pandas()
 
     # Get consistent source build (e.g. NCBI/GRC)
     source_build = header['genome_build']
@@ -224,34 +228,58 @@ def run_HmPOS(args):
         else:
             print('Retrieving rsID mappings from ENSEMBL API')
             mapping_ensembl = ensembl_post(tomap_rsIDs, args.target_build)  # Retrieve the SNP info from ENSEMBL
-    # Run Variant Harmonization
-    tqdm.pandas()
-    # df_scoring[['hm_source', 'hm_rsID', 'hm_chr', 'hm_pos']] = df_scoring.progress_apply(variant_HmPOS,
-    #                                                                                      axis=1,
-    #                                                                                      rsIDmaps=mapping_ensembl,
-    #                                                                                      liftchain=build_map,
-    #                                                                                      isSameBuild=isSameBuild,
-    #                                                                                      inferOtherAllele=False)
-    df_scoring[['hm_source', 'hm_rsID', 'hm_chr', 'hm_pos', 'hm_inferOtherAllele']] = df_scoring.progress_apply(variant_HmPOS,
-                                                                                                                axis=1,
-                                                                                                                rsIDmaps=mapping_ensembl,
-                                                                                                                liftchain=build_map,
-                                                                                                                isSameBuild=isSameBuild,
-                                                                                                                inferOtherAllele=True)
-    print('Mapped {} -> {}'.format(dict(df_scoring['hm_source'].value_counts()), loc_hm_out))
-    # Append information to header:
-    header.update({'HmPOS_build': args.target_build,
-                   'HmPOS_date': str(datetime.date(datetime.now()))}) # ToDo Consider adding information about the ENSEMBL build?
+    # Start Output
 
-    # Output Data
     if args.gzip is True:
         hm_out = gzip.open(loc_hm_out, 'wt')
     else:
         hm_out = open(loc_hm_out, 'w')
+    # Append information to header:
+    header.update({'HmPOS_build': args.target_build,
+                   'HmPOS_date': str(
+                       datetime.date(datetime.now()))})  # ToDo Consider adding information about the ENSEMBL build?
     hm_out.write('\n'.join(create_scoringfileheader(header)))
     hm_out.write('\n')
-    df_scoring.to_csv(hm_out, mode='a', index=False, sep='\t')# Write output using pandas
-    hm_out.close() # Close file
+
+    hm_Passed = True
+    hm_counts = {}
+    hm_chunks = int(np.ceil(df_scoring.shape[0] / chunksize))
+    while hm_Passed is True:
+        for ic in tqdm(range(0, hm_chunks)):
+            start = ic*chunksize
+            end = start + chunksize
+            try:
+                df_chunk = df_scoring.iloc[start:end,:].copy()
+                #print(start, end, df_chunk.index[0], df_chunk.index[-1])
+                df_chunk[['hm_source', 'hm_rsID', 'hm_chr', 'hm_pos', 'hm_inferOtherAllele']] = df_chunk.apply(variant_HmPOS,
+                                                                                                               axis=1,
+                                                                                                               rsIDmaps=mapping_ensembl,
+                                                                                                               liftchain=build_map,
+                                                                                                               isSameBuild=isSameBuild,
+                                                                                                               inferOtherAllele=True)
+                for hm_source, hm_count in dict(df_chunk['hm_source'].value_counts()).items():
+                    if hm_source in hm_counts:
+                        hm_counts[hm_source] += hm_count
+                    else:
+                        hm_counts[hm_source] = hm_count
+                if ic == 0:
+                    df_chunk.to_csv(hm_out, mode='a', index=False, sep='\t')  # Write output using pandas
+                else:
+                    df_chunk.to_csv(hm_out, mode='a', index=False, header=False, sep='\t')  # Write output using pandas
+            except:
+                hm_Passed = False
+        hm_Passed = 'COMPLETED'
+
+    if hm_Passed == 'COMPLETED':
+        hm_out.close()
+        print('Mapped {} -> {}'.format(hm_counts, loc_hm_out))
+        return
+    else:
+        hm_out.close()
+        os.remove(loc_hm_out)
+        print('FAILED')
+        raise HarmonizationError
+        return
 
 
 def variant_HmVCF(v, vcfs_targetbuild, CohortVCF=None, returnOtherAllele=True):
