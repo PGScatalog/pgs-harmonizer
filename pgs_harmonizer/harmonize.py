@@ -182,7 +182,7 @@ class Harmonizer:
         Outputs any changes to an hm_info dictionary"""
         # Initialize Output
         l_output = ['']*len(self.cols_order)
-        hm_info = {}
+        hm_info = {'hm_source': v['hm_source']}
 
         # Decide how to output the variant (pass/fail harmonization)
         PassHM = True
