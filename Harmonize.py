@@ -355,6 +355,8 @@ def run_HmVCF(args):
     except:
         print('There was an error opening the file!')
         raise IOError
+    tqdm.pandas()
+
     # Define output location
     ofolder = args.loc_outputs
     if ofolder.endswith('/'):
@@ -376,58 +378,83 @@ def run_HmVCF(args):
         print('ERROR: Could not find the VCF')
         raise IOError
 
+    # Start Output
     if args.gzip is True:
         loc_hm_out += '.gz'
-
-    # Apply the harmonization to the df
-    tqdm.pandas()
-    if args.addOtherAllele is True:
-        df_scoring[['hm_source', 'hm_vid', 'hm_code', 'other_allele']] = df_scoring.progress_apply(variant_HmVCF, axis=1,
-                                                                                                   vcfs_targetbuild=vcfs_targetbuild,
-                                                                                                   CohortVCF=usingCohortVCF,
-                                                                                                   returnOtherAllele=True)
+        hm_out = gzip.open(loc_hm_out, 'wt')
     else:
-        df_scoring[['hm_source', 'hm_vid', 'hm_code']] = df_scoring.progress_apply(variant_HmVCF, axis=1,
-                                                                                   vcfs_targetbuild=vcfs_targetbuild,
-                                                                                   CohortVCF=usingCohortVCF,
-                                                                                   returnOtherAllele=False)
-    # Post-Harmonization Fixes
-    df_scoring.loc[df_scoring['hm_code'].isnull() == False, 'hm_code'] = [conv2int(x) for x in df_scoring.loc[
-                                                                          df_scoring['hm_code'].isnull() == False, 'hm_code']]
-    if args.skip_strandflips is False:
-        df_scoring = FixStrandFlips(df_scoring) # also returns new column 'hm_fixedStrandFlip'
+        hm_out = open(loc_hm_out, 'w')
 
-    # ToDo unmappable2authorreported
-    # if args.author_reported is True:
-    #     df_scoring = unmappable2authorreported(df_scoring)
-
-    # Summarize Hm_Codes
-    print('Harmonized {} -> {}'.format(dict(df_scoring['hm_code'].value_counts()), loc_hm_out))
-
-    # Format Output
     header['HmVCF_date'] = str(datetime.date(datetime.now()))
     if usingCohortVCF is not None:
         header['HmVCF_ref'] = usingCohortVCF
     else:
-        header['HmVCF_ref'] = 'Ensembl Variation / dbSNP'#ToDo Consider adding information about the ENSEMBL build?
+        header['HmVCF_ref'] = 'Ensembl Variation / dbSNP'  # ToDo Consider adding information about the ENSEMBL build?
+    hm_out.write('\n'.join(create_scoringfileheader(header)) + '\n')
 
-    hm_formatter = Harmonizer(df_scoring.columns, returnVariantID=args.addVariantID)
-    df_scoring = df_scoring.progress_apply(hm_formatter.format_line, axis=1,
-                                           original_build=header['genome_build'])
-    df_scoring.columns = hm_formatter.cols_order
-
-    # Write Output
-    # print(hm_df.head())
-    # print(hm_df.tail())
-    if args.gzip is True:
-        hm_out = gzip.open(loc_hm_out, 'wt')
+    allcols = list(df_scoring.columns)
+    if args.addOtherAllele is True:
+        allcols += ['hm_source', 'hm_vid', 'hm_code', 'other_allele']
     else:
-        hm_out = open(loc_hm_out, 'w')
-    hm_out.write('\n'.join(create_scoringfileheader(header)))
-    hm_out.write('\n')
-    df_scoring.to_csv(hm_out, mode='a', index=False, sep='\t')  # Write output using pandas
-    hm_out.close()  # Close file
-    return
+        allcols += ['hm_source', 'hm_vid', 'hm_code']
+    hm_formatter = Harmonizer(df_scoring.columns, returnVariantID=args.addVariantID)
+    chrcount = 0
+    hm_counts = {}
+    hm_Passed = True
+    while hm_Passed is True:
+        try:
+            for hm_chr, df_chrom in df_scoring.groupby('hm_chr'):
+                print('Harmonizing Chromosome: {}'.format(hm_chr))
+                df_chrom = df_chrom.copy()
+                if args.addOtherAllele is True:
+                    df_chrom[['hm_source', 'hm_vid', 'hm_code', 'other_allele']] = df_chrom.progress_apply(variant_HmVCF,
+                                                                                                           axis=1,
+                                                                                                           vcfs_targetbuild=vcfs_targetbuild,
+                                                                                                           CohortVCF=usingCohortVCF,
+                                                                                                           returnOtherAllele=True)
+                else:
+                    df_chrom[['hm_source', 'hm_vid', 'hm_code']] = df_chrom.progress_apply(variant_HmVCF, axis=1,
+                                                                                           vcfs_targetbuild=vcfs_targetbuild,
+                                                                                           CohortVCF=usingCohortVCF,
+                                                                                           returnOtherAllele=False)
+                # Post-Harmonization Fixes
+                df_chrom.loc[df_chrom['hm_code'].isnull() == False, 'hm_code'] = [conv2int(x) for x in df_chrom.loc[df_chrom['hm_code'].isnull() == False, 'hm_code']]
+                if args.skip_strandflips is False:
+                    df_chrom = FixStrandFlips(df_chrom)  # also returns new column 'hm_fixedStrandFlip'
+
+                # ToDo unmappable2authorreported
+                # if args.author_reported is True:
+                #     df_chrom = unmappable2authorreported(df_chrom)
+
+                df_chrom = df_chrom.apply(hm_formatter.format_line, axis=1,
+                                          original_build=header['genome_build'])
+                df_chrom.columns = hm_formatter.cols_order
+
+                for hm_code, hm_count in dict(df_chrom['hm_code'].value_counts()).items():
+                    if hm_code in hm_counts:
+                        hm_counts[hm_code] += hm_count
+                    else:
+                        hm_counts[hm_code] = hm_count
+
+                if chrcount == 0:
+                    df_chrom.to_csv(hm_out, mode='a', index=False, sep='\t')  # Write output using pandas
+                else:
+                    df_chrom.to_csv(hm_out, mode='a', index=False, header=False, sep='\t')  # Write output using pandas
+                chrcount += 1
+            hm_Passed =  'COMPLETED'
+        except:
+            hm_Passed = False
+
+    if hm_Passed == 'COMPLETED':
+        hm_out.close()
+        print('Harmonized {} -> {}'.format(hm_counts, loc_hm_out))
+        return
+    else:
+        hm_out.close()
+        os.remove(loc_hm_out)
+        print('FAILED')
+        raise HarmonizationError
+        return
 
 
 if __name__ == "__main__":
