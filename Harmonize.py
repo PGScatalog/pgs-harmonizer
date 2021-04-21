@@ -403,8 +403,12 @@ def run_HmVCF(args):
     hm_Passed = True
     while hm_Passed is True:
         try:
+            df_scoring['hm_chr'].fillna('', inplace=True)
             for hm_chr, df_chrom in df_scoring.groupby('hm_chr'):
-                print('Harmonizing Chromosome: {}'.format(hm_chr))
+                if hm_chr is '':
+                    print('Harmonizing Chromosome: No HM_CHR')
+                else:
+                    print('Harmonizing Chromosome: {}'.format(hm_chr))
                 df_chrom = df_chrom.copy()
                 if args.addOtherAllele is True:
                     df_chrom[['hm_source', 'hm_vid', 'hm_code', 'other_allele']] = df_chrom.progress_apply(variant_HmVCF,
@@ -441,7 +445,7 @@ def run_HmVCF(args):
                 else:
                     df_chrom.to_csv(hm_out, mode='a', index=False, header=False, sep='\t')  # Write output using pandas
                 chrcount += 1
-            hm_Passed =  'COMPLETED'
+            hm_Passed = 'COMPLETED'
         except:
             hm_Passed = False
 

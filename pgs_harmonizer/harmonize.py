@@ -24,17 +24,20 @@ remap_header = {
 chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
 acceptable_alleles = re.compile('[ACGT]*$')  # alleles that can be reverse complemented
 
+
 def reversecomplement(x):
     if acceptable_alleles.match(x):
         return ''.join([{'A':'T','C':'G','G':'C','T':'A'}[B] for B in x][::-1])
     else:
         return None
 
+
 def conv2int(n):
     try:
         return int(n)
     except:
         return n
+
 
 def read_scorefile(loc_scorefile):
     """Loads PGS Catalog Scoring file and parses the header into a dictionary"""
