@@ -321,9 +321,9 @@ def variant_HmVCF(v, vcfs_targetbuild, CohortVCF=None, returnOtherAllele=True):
             hm_matchesVCF, hm_isPalindromic, hm_isFlipped = hm_TF
 
     if hm_code is None:
-        if 'other_allele' in v:
+        if other_allele is not None:
             hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,
-                                                 alleles=[v['effect_allele'], v['other_allele']])
+                                                 alleles=[v['effect_allele'], other_allele])
         else:
             hm_code = DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,
                                                  alleles=[v['effect_allele']])
