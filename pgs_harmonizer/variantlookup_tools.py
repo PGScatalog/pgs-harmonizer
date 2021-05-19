@@ -165,7 +165,7 @@ def vcf_lookup(chromosome, position, build, loc_vcfref='map/vcf_ref/'):
 
 class VCFs:
     """Class to open and hold all VCF files for a genome build"""
-    def __init__(self, build, loc_vcfref='map/vcf_ref/', cohort_name=None, loc_cohortref='map/cohort_ref/'):
+    def __init__(self, build, loc_vcfref='map/vcf_ref/', cohort_name=None):
         self.VCF = None
         self.by_chr = {}
         self.build = build
@@ -174,8 +174,9 @@ class VCFs:
                 loc_vcf = loc_vcfref + '{}/homo_sapiens-chr{}.vcf.gz'.format(self.build, chr)
                 self.by_chr[chr] = VCF(loc_vcf)
         else:
-            loc_vcf = '{}/{}.vcf.gz'.format(loc_cohortref, cohort_name)
-            self.VCF = VCF(loc_vcf)
+            loc_vcf = '{}/{}/cohort_ref/{}.vcf.gz'.format(loc_vcfref, build, cohort_name)
+            if os.path.isfile(loc_vcf):
+                self.VCF = VCF(loc_vcf)
 
     def vcf_lookup(self,chromosome, position, rsid = None):
         """Lookup a variant in a specific genome build"""
@@ -201,16 +202,4 @@ class VCFs:
         return VCFResult(chromosome, position, self.build, r_lookup)
 
 
-class CohortVariants:
-    """Class to load cohort-specific variants information and compare alleles"""
-    def __init__(self, cohortname, variants_table):
-        self.cohort = cohortname
-        self.variants_table = variants_table
-
-    def check_variant(self):
-        """Checks whether the variant (chr, pos, alleles) is genotyped/imputed in this cohort"""
-
-    def infer_reference_allele(self, chr, pos, eff, rsID = None):
-        """Try to infer the reference_allele based on genotyped/imputed variants in this cohort"""
-
-#def guess_build(loc_file, vcf_root):
+# def guess_build(loc_file, vcf_root):
