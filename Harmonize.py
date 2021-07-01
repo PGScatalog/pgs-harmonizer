@@ -50,6 +50,10 @@ parser_VCF.add_argument(dest="target_build",
                         help="Target genome build choices: 'GRCh37'or GRCh38'",
                         metavar="GRCh3#",
                         choices=['GRCh37', 'GRCh38'])
+parser_VCF.add_argument("-loc_vcfs", dest="loc_vcfref",
+                        help="Directory where the VCF files are located, otherwise assumed to be in: map/vcf_ref/",
+                        metavar="DIR",
+                        default='map/vcf_ref/'),
 parser_VCF.add_argument("-cohort_vcf", dest="cohort_name",
                         help="Cohort VCF: Used to check if a variant is present in the genotyped/imputed variants for "
                              "a cohort and add other allele when the information from ENSEMBL is ambiguous "
@@ -111,7 +115,7 @@ def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOthe
             if (pd.isnull(v['chr_name']) is False) and (pd.isnull(v['chr_position']) is False):
                 hm_chr, hm_pos, hm_liftover_multimaps = list(liftchain.lift(v['chr_name'], v['chr_position']))  # liftover
                 hm_source = 'liftover'
-    if all([x is '' for x in [hm_chr, hm_pos]]):
+    if all([x == '' for x in [hm_chr, hm_pos]]):
         hm_source = 'Unknown'
 
     if hm_pos != '':
@@ -367,12 +371,12 @@ def run_HmVCF(args):
     # Load Variant References (VCF & Cohort)
     usingCohortVCF = None
     if args.cohort_name is not None:
-        vcfs_targetbuild = VCFs(build=args.target_build, cohort_name=args.cohort_name)
+        vcfs_targetbuild = VCFs(build=args.target_build, cohort_name=args.cohort_name, loc_vcfref=args.loc_vcfref)
         usingCohortVCF = args.cohort_name
         loc_hm_out = '{}/{}_hmVCF{}_{}.txt'.format(ofolder, args.pgs_id, args.target_build, usingCohortVCF)
         args.addOtherAllele = True
     else:
-        vcfs_targetbuild = VCFs(build=args.target_build)  # ENSEMBL VCF
+        vcfs_targetbuild = VCFs(build=args.target_build, loc_vcfref=args.loc_vcfref)  # ENSEMBL VCF
         loc_hm_out = '{}/{}_hmVCF{}.txt'.format(ofolder, args.pgs_id, args.target_build)
     if (vcfs_targetbuild.VCF is None) and (len(vcfs_targetbuild.by_chr) == 0):
         print('ERROR: Could not find the VCF')
@@ -405,7 +409,7 @@ def run_HmVCF(args):
         try:
             df_scoring['hm_chr'].fillna('', inplace=True)
             for hm_chr, df_chrom in df_scoring.groupby('hm_chr'):
-                if hm_chr is '':
+                if hm_chr == '':
                     print('Harmonizing Chromosome: No HM_CHR')
                 else:
                     print('Harmonizing Chromosome: {}'.format(hm_chr))
