@@ -172,6 +172,9 @@ class VCFs:
         if cohort_name is None:
             for chr in chromosomes:
                 loc_vcf = loc_vcfref + '{}/homo_sapiens-chr{}.vcf.gz'.format(self.build, chr)
+                # If the given path hasn't a subdirectory for the assembly
+                if not os.path.isfile(loc_vcf):
+                    loc_vcf = loc_vcfref + '/homo_sapiens-chr{}.vcf.gz'.format(chr)
                 self.by_chr[chr] = VCF(loc_vcf)
         else:
             loc_vcf = '{}/{}/cohort_ref/{}.vcf.gz'.format(loc_vcfref, build, cohort_name)

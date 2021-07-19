@@ -72,6 +72,8 @@ optional arguments:
                       otherwise assumed to be in: PGS_HmPOS/
   -loc_hmoutput DIR   Directory where the harmonization output will be saved
                       (default: PGS_HmPOS/)
+  -loc_vcfs DIR       Directory where the VCF files are located
+                      (default: map/vcf_ref)
   -cohort_vcf COHORT  Cohort VCF: Used to check if a variant is present in the
                       genotyped/imputed variants for a cohort and add other
                       allele when the information from ENSEMBL is ambiguous
