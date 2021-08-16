@@ -30,5 +30,5 @@ process HmVCF {
 workflow {
     data = channel.from(params.pgs)
     HmPOS(data)
-    HmVCF(HmPOS.in)
+    HmVCF(HmPOS.out)
 }
