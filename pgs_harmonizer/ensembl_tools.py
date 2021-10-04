@@ -2,7 +2,6 @@ import requests
 import time
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
-import pandas as pd
 from pgs_harmonizer.harmonize import reversecomplement
 
 

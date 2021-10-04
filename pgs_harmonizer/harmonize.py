@@ -32,6 +32,10 @@ def reversecomplement(x):
         return None
 
 
+def reversecomplement_list(alleles):
+    return [reversecomplement(x) for x in alleles]
+
+
 def conv2int(n):
     try:
         return int(n)
@@ -82,7 +86,7 @@ def create_scoringfileheader(h):
     """Function to extract score & publication information for the PGS Catalog Scoring File commented header"""
     # Recreate original header
     lines = [
-        '### PGS CATALOG SCORING FILE - see www.pgscatalog.org/downloads/#dl_ftp for additional information',
+        '### PGS CATALOG SCORING FILE - see https://www.pgscatalog.org/downloads/#dl_ftp_scoring for additional information',
         '## POLYGENIC SCORE (PGS) INFORMATION',
         '# PGS ID = {}'.format(h['pgs_id'])
     ]
@@ -112,7 +116,7 @@ def create_scoringfileheader(h):
     return lines
 
 
-def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,alleles = [], ):
+def determineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,alleles = [], ):
     hm_coding = {
         (True, False, False): 5,
         (True, True, False): 4,
@@ -122,14 +126,14 @@ def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,all
     hm_code = hm_coding.get((hm_matchesVCF, hm_isPalindromic, hm_isFlipped), -1)
     if hm_code == 4:
         if len(alleles) > 1:
-            rc_alleles = [reversecomplement(x) for x in alleles]
+            rc_alleles = reversecomplement_list(alleles)
             for A in alleles:
                 if A in rc_alleles:
                     hm_code = 3
     return hm_code
 
 
-def FixStrandFlips(df):
+def fixStrandFlips(df):
     df['hm_fixedStrandFlip'] = np.nan
 
     # Correct the effect_allele
@@ -158,11 +162,14 @@ class Harmonizer:
         """Used to select the columns and ordering of the output PGS Scoring file"""
         self.cols_previous = cols
         self.hm_fields = ['rsID', 'chr_name', 'chr_position', 'effect_allele', 'other_allele']
+        self.cols_order = []
 
+        # Variant ID
         if returnVariantID is True:
-            self.cols_order = ['variant_id', 'chr_name', 'chr_position']
-        else:
-            self.cols_order = ['chr_name', 'chr_position']
+            self.cols_order.append('variant_id')
+
+        # Variant location
+        self.cols_order += ['chr_name', 'chr_position']
 
         # Check if the rsID will be added
         if 'rsID' in self.cols_previous:
@@ -179,12 +186,13 @@ class Harmonizer:
                 self.cols_order.append(c)
 
         self.cols_order += ['hm_code', 'hm_info']
+        self.cols_count = len(self.cols_order)
 
     def format_line(self, v, original_build):
         """Method that takes harmonized variant location and compares it with the old information.
         Outputs any changes to an hm_info dictionary"""
         # Initialize Output
-        l_output = ['']*len(self.cols_order)
+        l_output = ['']*self.cols_count
         hm_info = {'hm_source': v['hm_source']}
 
         # Decide how to output the variant (pass/fail harmonization)
@@ -206,10 +214,9 @@ class Harmonizer:
                         hm_info['fixedStrandFlip'] = False
 
         # Create Output
-
-
         if original_build is None:
             original_build = 'NR'
+
         if PassHM is True:
             for i, colname in enumerate(self.cols_order):
                 if colname == 'chr_name':
@@ -242,7 +249,7 @@ class Harmonizer:
 
             for colname in self.hm_fields:
                 if colname in v:
-                    if colname is 'rsID':
+                    if colname == 'rsID':
                         rsid = v['hm_rsID']
                         if pd.isnull(rsid) is False:  # mapped by rsID
                             hm_info['rsID'] = rsid
@@ -267,7 +274,3 @@ class Harmonizer:
                         l_output[i] = v[colname]
 
         return pd.Series(l_output)
-
-
-
-

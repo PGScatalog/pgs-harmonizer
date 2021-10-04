@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from cyvcf2 import VCF
-from pgs_harmonizer.harmonize import reversecomplement, chromosomes, DetermineHarmonizationCode
+from pgs_harmonizer.harmonize import reversecomplement, reversecomplement_list, chromosomes, determineHarmonizationCode
 
 
 class VCFResult:
@@ -30,7 +30,7 @@ class VCFResult:
                 hm_isFlipped = False
 
                 alleles = [v.REF] + v.ALT
-                alleles_rc = [reversecomplement(x) for x in alleles]
+                alleles_rc = reversecomplement_list(alleles)
                 # print('Alleles: {} | RC: {}'.format(alleles, alleles_rc))
 
                 # Check allele(s) against VCF
@@ -53,7 +53,7 @@ class VCFResult:
 
                 hm_tuple = (hm_matchesVCF, hm_isPalindromic, hm_isFlipped)
                 v_hm.append([hm_tuple, v.ID])
-                v_hm_code.append(DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped))
+                v_hm_code.append(determineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped))
         return v_hm[v_hm_code.index(max(v_hm_code))]
 
     def infer_OtherAllele(self, eff, oa_ensembl=None, allowINDELs = False):
@@ -68,7 +68,7 @@ class VCFResult:
             alleles = [v.REF] + v.ALT
             if len(alleles) < 2:
                 continue
-            alleles_rc = [reversecomplement(x) for x in alleles]
+            alleles_rc = reversecomplement_list(alleles)
 
             minorallele = v.INFO.get('MA')
             if minorallele is not None:
@@ -116,7 +116,7 @@ class VCFResult:
                 oa_append = False
                 if oa in oa_ensembl:
                     oa_append = True
-                elif (hm_isFlipped is True) and (oa in [reversecomplement(x) for x in oa_ensembl]):
+                elif (hm_isFlipped is True) and (oa in reversecomplement_list(oa_ensembl)):
                     oa_append = True
             else:
                 oa_append = True
@@ -155,7 +155,10 @@ def vcf_lookup(chromosome, position, build, loc_vcfref='map/vcf_ref/'):
     if chromosome not in chromosomes:
         raise ValueError("Invalid Chromosome. Expected one of: {}".format(chromosomes))
 
-    loc_vcf = loc_vcfref + '{}/homo_sapiens-chr{}.vcf.gz'.format(build, chromosome)
+    loc_vcf = f'{loc_vcfref}{build}/homo_sapiens-chr{chromosome}.vcf.gz'
+    # If the given path hasn't a subdirectory for the assembly
+    if not os.path.isfile(loc_vcf):
+        loc_vcf = f'{loc_vcfref}/homo_sapiens-chr{chromosome}.vcf.gz'
     vcf = VCF(loc_vcf)
     if (type(position) is str) and ('-' in position):
         return list(vcf('{}:{}'.format(chromosome, position)))
@@ -171,17 +174,17 @@ class VCFs:
         self.build = build
         if cohort_name is None:
             for chr in chromosomes:
-                loc_vcf = loc_vcfref + '{}/homo_sapiens-chr{}.vcf.gz'.format(self.build, chr)
+                loc_vcf = f'{loc_vcfref}{self.build}/homo_sapiens-chr{chr}.vcf.gz'
                 # If the given path hasn't a subdirectory for the assembly
                 if not os.path.isfile(loc_vcf):
-                    loc_vcf = loc_vcfref + '/homo_sapiens-chr{}.vcf.gz'.format(chr)
+                    loc_vcf = f'{loc_vcfref}/homo_sapiens-chr{chr}.vcf.gz'
                 self.by_chr[chr] = VCF(loc_vcf)
         else:
             loc_vcf = '{}/{}/cohort_ref/{}.vcf.gz'.format(loc_vcfref, build, cohort_name)
             if os.path.isfile(loc_vcf):
                 self.VCF = VCF(loc_vcf)
 
-    def vcf_lookup(self,chromosome, position, rsid = None):
+    def vcf_lookup(self, chromosome, position, rsid = None):
         """Lookup a variant in a specific genome build"""
         if chromosome not in chromosomes:
             return VCFResult(chromosome, position, self.build, [])
@@ -204,5 +207,3 @@ class VCFs:
 
         return VCFResult(chromosome, position, self.build, r_lookup)
 
-
-# def guess_build(loc_file, vcf_root):
