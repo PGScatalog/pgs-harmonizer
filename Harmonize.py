@@ -64,7 +64,7 @@ parser_VCF.add_argument('--addOtherAllele',
                         help='Adds a other_allele(s) column for PGS that only have a recorded effect_allele',
                         action='store_true', required=False)
 parser_VCF.add_argument('--addVariantID',
-                        help='Returns a column with the ID from the VCF corresponding to the match variant/allele(s)',
+                        help='Returns a column with the ID from the VCF corresponding to the matched variant/allele(s)',
                         action='store_true', required=False)
 parser_VCF.add_argument('--author_reported',
                         help='Replaces unmappable variants (hm_code = -5) with the author-reported code (hm_code = 0)',

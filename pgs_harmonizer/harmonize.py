@@ -157,28 +157,25 @@ class Harmonizer:
     def __init__(self, cols, returnVariantID=False):
         """Used to select the columns and ordering of the output PGS Scoring file"""
         self.cols_previous = cols
-        self.hm_fields = ['rsID', 'chr_name', 'chr_position', 'effect_allele', 'other_allele']
 
-        if returnVariantID is True:
-            self.cols_order = ['variant_id', 'chr_name', 'chr_position']
-        else:
-            self.cols_order = ['chr_name', 'chr_position']
+        # Decide what to return in variant_id column:
+        self.has_rsID = False
+        if 'rsID' in cols:
+            self.has_rsID = True
 
-        # Check if the rsID will be added
-        if 'rsID' in self.cols_previous:
-            self.cols_order.append('rsID')
+        self.variant_id_vcf = returnVariantID  #  # return the variant_id from the VCF file or rsID as default
 
-        # Check if there is a reference allele will be added
-        self.cols_order.append('effect_allele')
-        if 'other_allele' in self.cols_previous:
-            self.cols_order.append('other_allele')
+        # Standard set of columns (vaguely like VCF)
+        self.cols_order = ['chr_name', 'chr_position', 'variant_id',
+                           'effect_allele', 'other_allele', 'effect_weight',
+                           'hm_code', 'hm_info']
+        self.cols_extra = []
 
         # Check which other columns need to be added
         for c in self.cols_previous:
-            if (c not in self.cols_order) and (c.startswith('hm_') is False):
+            if (c not in self.cols_order) and (c.startswith('hm_') is False) and (c != 'rsID'):
                 self.cols_order.append(c)
-
-        self.cols_order += ['hm_code', 'hm_info']
+                self.cols_extra.append(c)
 
     def format_line(self, v, original_build):
         """Method that takes harmonized variant location and compares it with the old information.
@@ -186,13 +183,15 @@ class Harmonizer:
         # Initialize Output
         l_output = ['']*len(self.cols_order)
         hm_info = {'hm_source': v['hm_source']}
+        missing_val = '.'
 
         # Decide how to output the variant (pass/fail harmonization)
         PassHM = True
         hm_code = v['hm_code']
         if hm_code is None:
             v['hm_code'] = -1
-        if hm_code < 0: #Proceed as if it's not mapped
+
+        if hm_code < 0:  # Proceed as if it's not mapped
             PassHM = False
             if hm_code == -4:
                 if 'hm_fixedStrandFlip' in v:
@@ -205,66 +204,79 @@ class Harmonizer:
                     else:
                         hm_info['fixedStrandFlip'] = False
 
-        # Create Output
-
-
         if original_build is None:
             original_build = 'NR'
+
+        # Define output
         if PassHM is True:
-            for i, colname in enumerate(self.cols_order):
-                if colname == 'chr_name':
-                    l_output[i] = v['hm_chr']
-                elif colname == 'chr_position':
-                    l_output[i] = v['hm_pos']
-                elif colname == 'rsID':
-                    rsid = v['hm_rsID']
-                    if pd.isnull(rsid) is False:  # mapped by rsID
-                        l_output[i] = rsid
-                        if rsid != v['rsID']:
-                            hm_info['previous_rsID'] = v['rsID']
+            # MANDATORY:chr_name|chr_position|effect_allele|effect_weight|hm_code
+            l_output[self.cols_order.index('chr_name')] = v['hm_chr']
+            l_output[self.cols_order.index('chr_position')] = v['hm_pos']
+            l_output[self.cols_order.index('effect_allele')] = v['effect_allele']
+            l_output[self.cols_order.index('effect_weight')] = v['effect_weight']
+            l_output[self.cols_order.index('hm_code')] = str(hm_code)
+
+            # MANDATORY: other_allele
+            if ('other_allele' in v) and (pd.isnull(v['other_allele']) is False):
+                l_output[self.cols_order.index('other_allele')] = v['other_allele']
+            else:
+                l_output[self.cols_order.index('other_allele')] = missing_val
+
+            # MANDATORY: variant_id
+            if self.variant_id_vcf is True:
+                l_output[self.cols_order.index('variant_id')] = v['hm_vid']  # Return the ID from VCF
+            elif self.has_rsID:
+                rsID = v['hm_rsID']
+                old_rsID = v['rsID']
+                if pd.isnull(rsID) is False:
+                    if rsID != old_rsID:
+                        hm_info['previous_rsID'] = old_rsID  # Compare to old rsID and write old-value to hm_info
+                    # Decide what to output
+                    if self.variant_id_vcf is False:
+                        l_output[self.cols_order.index('variant_id')] = rsID
                     else:
-                        l_output[i] = v['rsID']
-                elif colname == 'variant_id':
-                    l_output[i] = v['hm_vid']
-                elif colname == 'hm_code':
-                    l_output[i] = str(hm_code)
-                elif colname == 'hm_info':
-                    if len(hm_info) > 0:
-                        l_output[i] = json.dumps(hm_info)
-                else:
-                    l_output[i] = v[colname]
+                        hm_info['rsID'] = rsID  # Write to hm_info for provenance
+            else:
+                l_output[self.cols_order.index('variant_id')] = missing_val  # Return missing val
+
+            # MANDATORY: hm_info
+            if len(hm_info) > 0:
+                l_output[self.cols_order.index('hm_info')] = json.dumps(hm_info)
+
+            # OPTIONAL: Add information from extra columns
+            for colname in self.cols_extra:
+                l_output[self.cols_order.index(colname)] = v[colname]
         else:
             hm_info['reported_build'] = original_build
-            if pd.isnull(v['hm_chr']) is False:
-                hm_info['hm_chr'] = v['hm_chr']
-            if pd.isnull(v['hm_pos']) is False:
-                hm_info['hm_pos'] = v['hm_pos']
 
-            for colname in self.hm_fields:
-                if colname in v:
-                    if colname is 'rsID':
-                        rsid = v['hm_rsID']
-                        if pd.isnull(rsid) is False:  # mapped by rsID
-                            hm_info['rsID'] = rsid
-                            if rsid != v['rsID']:
-                                hm_info['previous_rsID'] = v['rsID']
-                        else:
-                            hm_info['rsID'] = v['rsID']
-                    else:
-                        val = v[colname]
-                        if pd.isnull(val) is False:
-                            hm_info[colname] = val
+            if self.has_rsID is True:
+                rsID = v['hm_rsID']
+                old_rsID = v['rsID']
+                if pd.isnull(rsID) is False:  # mapped by rsID
+                    hm_info['rsID'] = rsID
+                    if rsID != old_rsID:
+                        hm_info['previous_rsID'] = old_rsID
+                else:
+                    hm_info['rsID'] = old_rsID
 
             for i, colname in enumerate(self.cols_order):
-                if colname not in self.hm_fields:
-                    if colname == 'variant_id':
-                        hm_info['variant_id'] = v['hm_vid']
-                    elif colname == 'hm_info':
-                        l_output[i] = json.dumps(hm_info)
-                    elif colname == 'hm_code':
-                        l_output[i] = str(hm_code)
-                    else:
-                        l_output[i] = v[colname]
+                if colname == 'chr_name':
+                    if pd.isnull(v['hm_chr']) is False:
+                        hm_info['hm_chr'] = v['hm_chr']
+                elif colname == 'chr_position':
+                    if pd.isnull(v['hm_pos']) is False:
+                        hm_info['hm_pos'] = v['hm_pos']
+                elif colname == 'variant_id':
+                    hm_info['variant_id'] = v['hm_vid']
+                    l_output[i] = missing_val
+                elif colname in ['effect_allele', 'other_allele']:
+                    hm_info[colname] = v[colname]
+                elif colname == 'hm_info':
+                    l_output[i] = json.dumps(hm_info)
+                elif colname == 'hm_code':
+                    l_output[i] = str(hm_code)
+                else:
+                    l_output[i] = v[colname]  # Output everything that isn't a mandatory column as a value
 
         return pd.Series(l_output)
 
