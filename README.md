@@ -72,8 +72,8 @@ optional arguments:
                       otherwise assumed to be in: PGS_HmPOS/
   -loc_hmoutput DIR   Directory where the harmonization output will be saved
                       (default: PGS_HmPOS/)
-  -loc_vcfs DIR       Directory where the VCF files are located
-                      (default: map/vcf_ref)
+  -loc_vcfs DIR       Directory where the VCF files are located, otherwise
+                      assumed to be in: map/vcf_ref/
   -cohort_vcf COHORT  Cohort VCF: Used to check if a variant is present in the
                       genotyped/imputed variants for a cohort and add other
                       allele when the information from ENSEMBL is ambiguous
@@ -81,13 +81,16 @@ optional arguments:
   --addOtherAllele    Adds a other_allele(s) column for PGS that only have a
                       recorded effect_allele
   --addVariantID      Returns a column with the ID from the VCF corresponding
-                      to the match variant/allele(s)
-  --author_reported   Replaces unmappable variants (hm_code = -5) with the
-                      author-reported code (hm_code = 0)
-  --skip_strandflips  This flag will stop the harmonizing from trying to
-                      correct strand flips
-  --silent_tqdm       Disables tqdm progress bar
+                      to the matched variant/allele(s)
+  --skip_strandflips  This flag will stop the harmonizer from correcting
+                      strand flips
+  --split_unmappable  This flag will write unmapped & uncorrected variants
+                      (hm_code < 0) to separate files (suffixes: [.mapped,
+                      .unmatched])
   --gzip              Writes gzipped harmonized output
+  --silent_tqdm       Disables tqdm progress bar
+(pgs-harmonizer) cmpc373:pgs-harmonizer sl925$ 
+
 </pre>
 
 ## Examples

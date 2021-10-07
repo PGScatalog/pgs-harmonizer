@@ -66,15 +66,19 @@ parser_VCF.add_argument('--addOtherAllele',
 parser_VCF.add_argument('--addVariantID',
                         help='Returns a column with the ID from the VCF corresponding to the matched variant/allele(s)',
                         action='store_true', required=False)
-parser_VCF.add_argument('--author_reported',
-                        help='Replaces unmappable variants (hm_code = -5) with the author-reported code (hm_code = 0)',
-                        action='store_true', required=False)
+# parser_VCF.add_argument('--author_reported',
+#                         help='Replaces unmappable variants (hm_code = -5) with the author-reported code (hm_code = 0)',
+#                         action='store_true', required=False)
 parser_VCF.add_argument('--skip_strandflips',
-                        help='This flag will stop the harmonizing from trying to correct strand flips',
+                        help='This flag will stop the harmonizer from correcting strand flips',
                         action='store_true', required=False)
-parser_VCF.add_argument('--silent_tqdm', help='Disables tqdm progress bar',
+parser_VCF.add_argument('--split_unmappable',
+                        help='This flag will write unmapped & uncorrected variants (hm_code < 0) to separate files '
+                             '(suffixes: [.mapped, .unmatched])',
                         action='store_true', required=False)
 parser_VCF.add_argument('--gzip', help='Writes gzipped harmonized output',
+                        action='store_true', required=False)
+parser_VCF.add_argument('--silent_tqdm', help='Disables tqdm progress bar',
                         action='store_true', required=False)
 
 args = parser.parse_args()
@@ -383,24 +387,6 @@ def run_HmVCF(args):
         raise IOError
 
     # Start Output
-    if args.gzip is True:
-        loc_hm_out += '.gz'
-        hm_out = gzip.open(loc_hm_out, 'wt')
-    else:
-        hm_out = open(loc_hm_out, 'w')
-
-    header['HmVCF_date'] = str(datetime.date(datetime.now()))
-    if usingCohortVCF is not None:
-        header['HmVCF_ref'] = usingCohortVCF
-    else:
-        header['HmVCF_ref'] = 'Ensembl Variation / dbSNP'  # ToDo Consider adding information about the ENSEMBL build?
-    hm_out.write('\n'.join(create_scoringfileheader(header)) + '\n')
-
-    allcols = list(df_scoring.columns)
-    if args.addOtherAllele is True:
-        allcols += ['hm_source', 'hm_vid', 'hm_code', 'other_allele']
-    else:
-        allcols += ['hm_source', 'hm_vid', 'hm_code']
     hm_formatter = Harmonizer(df_scoring.columns, returnVariantID=args.addVariantID)
     chrcount = 0
     hm_counts = {}
@@ -445,21 +431,72 @@ def run_HmVCF(args):
                         hm_counts[hm_code] = hm_count
 
                 if chrcount == 0:
-                    df_chrom.to_csv(hm_out, mode='a', index=False, sep='\t')  # Write output using pandas
+                    df_harmonized = df_chrom[df_chrom['chr_name'] != ''].copy()
+                    df_harmonized_unmapped = df_chrom[df_chrom['chr_name'] == ''].copy()
                 else:
-                    df_chrom.to_csv(hm_out, mode='a', index=False, header=False, sep='\t')  # Write output using pandas
+                    df_harmonized = pd.concat([df_harmonized, df_chrom[df_chrom['chr_name'] != '']])
+                    df_harmonized_unmapped = pd.concat([df_harmonized_unmapped, df_chrom[df_chrom['chr_name'] == ''].copy()])
                 chrcount += 1
             hm_Passed = 'COMPLETED'
         except:
             hm_Passed = False
 
     if hm_Passed == 'COMPLETED':
-        hm_out.close()
-        print('Harmonized {} -> {}'.format(hm_counts, loc_hm_out))
+        # Sort the harmonized variants DF
+        df_harmonized.chr_name = df_harmonized.chr_name.astype(int)
+        df_harmonized.chr_position = df_harmonized.chr_position.astype(int)
+        df_harmonized = df_harmonized.sort_values(by=['chr_name', 'chr_position'], axis =0)
+        df_harmonized.chr_name = df_harmonized.chr_name.astype(str)
+        df_harmonized.chr_position = df_harmonized.chr_position.astype(str)
+
+        header['HmVCF_date'] = str(datetime.date(datetime.now()))
+        if usingCohortVCF is not None:
+            header['HmVCF_ref'] = usingCohortVCF
+        else:
+            header['HmVCF_ref'] = 'Ensembl Variation / dbSNP'  # ToDo Consider adding information about ENSEMBL build
+        header['HmVCF_n_matched'] = df_harmonized.shape[0]
+        header['HmVCF_n_unmapped'] = df_harmonized_unmapped.shape[0]
+
+        if args.split_unmappable is False:
+            # Merge w/ unharmonized variants
+            df_harmonized = pd.concat([df_harmonized, df_harmonized_unmapped])
+            # Write merged file
+            if args.gzip is True:
+                hm_out = gzip.open(loc_hm_out + '.gz', 'wt')
+            else:
+                hm_out = open(loc_hm_out, 'w')
+            list_header = create_scoringfileheader(header, skipfields=[])
+            hm_out.write('\n'.join(list_header) + '\n')
+            df_harmonized.to_csv(hm_out, mode='a', index=False, sep='\t', quotechar="'")  # Write output using pandas
+            print('Harmonized {} -> {}'.format(hm_counts, loc_hm_out))
+            hm_out.close()
+        else:
+            # Write matched variants
+            loc_hm_out_matched = loc_hm_out.replace('.txt', '.matched.txt')
+            if args.gzip is True:
+                hm_out = gzip.open(loc_hm_out_matched + '.gz', 'wt')
+            else:
+                hm_out = open(loc_hm_out_matched, 'w')
+            list_header_matched = create_scoringfileheader(header, skipfields=['HmVCF_n_unmapped'])
+            hm_out.write('\n'.join(list_header_matched) + '\n')
+            df_harmonized.to_csv(hm_out, mode='a', index=False, sep='\t', quotechar="'")  # Write output using pandas
+            hm_out.close()
+
+            # Write unmapped variants
+            loc_hm_out_unmapped = loc_hm_out.replace('.txt', '.unmapped.txt')
+            if args.gzip is True:
+                loc_hm_out_unmapped += '.gz'
+                hm_out_unmapped = gzip.open(loc_hm_out_unmapped, 'wt')
+            else:
+                hm_out_unmapped = open(loc_hm_out_unmapped, 'w')
+
+            list_header_unmapped = create_scoringfileheader(header, skipfields=['HmVCF_n_matched'])
+            hm_out_unmapped.write('\n'.join(list_header_unmapped) + '\n')
+            df_harmonized_unmapped.to_csv(hm_out_unmapped, mode='a', index=False, sep='\t', quotechar="'")  # Write output w/ pd
+            hm_out_unmapped.close()
+            print('Harmonized {} -> {} {}'.format(hm_counts, loc_hm_out_matched, loc_hm_out_unmapped))
         return
     else:
-        hm_out.close()
-        os.remove(loc_hm_out)
         print('FAILED')
         raise HarmonizationError
         return

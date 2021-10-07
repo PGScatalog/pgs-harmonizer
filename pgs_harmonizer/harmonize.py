@@ -78,7 +78,7 @@ def read_scorefile(loc_scorefile):
     return(header, df_scoring)
 
 
-def create_scoringfileheader(h):
+def create_scoringfileheader(h, skipfields=[]):
     """Function to extract score & publication information for the PGS Catalog Scoring File commented header"""
     # Recreate original header
     lines = [
@@ -109,10 +109,16 @@ def create_scoringfileheader(h):
             lines += ['# HmVCF Reference = {}'.format(h['HmVCF_ref']),
                       '# HmVCF Date = {}'.format(h['HmVCF_date'])
                       ]
+            # N Matched Variants
+            if ('HmVCF_n_matched' in h) and ('HmVCF_n_matched' not in skipfields):
+                lines.append('# HmVCF N Matched Variants = {}'.format(h['HmVCF_n_matched']))
+            # N Unmatched Variants
+            if ('HmVCF_n_unmapped' in h) and ('HmVCF_n_unmapped' not in skipfields):
+                lines.append('# HmVCF N Unmapped Variants = {}'.format(h['HmVCF_n_unmapped']))
     return lines
 
 
-def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,alleles = [], ):
+def DetermineHarmonizationCode(hm_matchesVCF, hm_isPalindromic, hm_isFlipped,alleles = []):
     hm_coding = {
         (True, False, False): 5,
         (True, True, False): 4,
