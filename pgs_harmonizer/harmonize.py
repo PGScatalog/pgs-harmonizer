@@ -147,9 +147,9 @@ def FixStrandFlips(df):
     return df
 
 
-def unmappable2authorreported(df):
-    # ToDo unmappable2authorreported
-    return df
+# def unmappable2authorreported(df):
+#     # ToDo unmappable2authorreported
+#     return df
 
 
 class Harmonizer:
@@ -163,7 +163,7 @@ class Harmonizer:
         if 'rsID' in cols:
             self.has_rsID = True
 
-        self.variant_id_vcf = returnVariantID  #  # return the variant_id from the VCF file or rsID as default
+        self.variant_id_vcf = returnVariantID  # return the variant_id from the VCF file or rsID as default
 
         # Standard set of columns (vaguely like VCF)
         self.cols_order = ['chr_name', 'chr_position', 'variant_id',
@@ -225,7 +225,8 @@ class Harmonizer:
             # MANDATORY: variant_id
             if self.variant_id_vcf is True:
                 l_output[self.cols_order.index('variant_id')] = v['hm_vid']  # Return the ID from VCF
-            elif self.has_rsID:
+
+            if self.has_rsID:
                 rsID = v['hm_rsID']
                 old_rsID = v['rsID']
                 if pd.isnull(rsID) is False:
@@ -236,7 +237,7 @@ class Harmonizer:
                         l_output[self.cols_order.index('variant_id')] = rsID
                     else:
                         hm_info['rsID'] = rsID  # Write to hm_info for provenance
-            else:
+            if l_output[self.cols_order.index('variant_id')] == '':
                 l_output[self.cols_order.index('variant_id')] = missing_val  # Return missing val
 
             # MANDATORY: hm_info
@@ -267,10 +268,13 @@ class Harmonizer:
                     if pd.isnull(v['hm_pos']) is False:
                         hm_info['hm_pos'] = v['hm_pos']
                 elif colname == 'variant_id':
-                    hm_info['variant_id'] = v['hm_vid']
+                    if pd.isnull(v['hm_vid']) is False:
+                        hm_info['variant_id'] = v['hm_vid']
                     l_output[i] = missing_val
                 elif colname in ['effect_allele', 'other_allele']:
-                    hm_info[colname] = v[colname]
+                    val = v[colname]
+                    if pd.isnull(val) is False:
+                        hm_info[colname] = val
                 elif colname == 'hm_info':
                     l_output[i] = json.dumps(hm_info)
                 elif colname == 'hm_code':
