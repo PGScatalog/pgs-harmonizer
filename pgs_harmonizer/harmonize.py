@@ -17,7 +17,9 @@ remap_header = {
     'HmPOS Build': 'HmPOS_build',
     'HmPOS Date':'HmPOS_date',
     'HmVCF Reference': 'HmVCF_ref',
-    'HmVCF Date': 'HmVCF_date'
+    'HmVCF Date': 'HmVCF_date',
+    'HmVCF N Matched Variants': 'HmVCF_n_matched',
+    'HmVCF N Unmapped Variants': 'HmVCF_n_unmapped'
 } # ToDo remove once Scoring File headers are fixed
 
 
