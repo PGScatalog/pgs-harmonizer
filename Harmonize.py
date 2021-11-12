@@ -76,6 +76,10 @@ parser_VCF.add_argument('--split_unmappable',
                         help='This flag will write unmapped & uncorrected variants (hm_code < 0) to separate files '
                              '(suffixes: [.mapped, .unmatched])',
                         action='store_true', required=False)
+parser_VCF.add_argument('--keep_duplicates',
+                        help='This flag will allows duplicate variants to be present in the mapped variant file. '
+                             'The default behaviour is to drop them.',
+                        action='store_true', required=False)
 parser_VCF.add_argument('--gzip', help='Writes gzipped harmonized output',
                         action='store_true', required=False)
 parser_VCF.add_argument('--silent_tqdm', help='Disables tqdm progress bar',
@@ -389,7 +393,6 @@ def run_HmVCF(args):
     # Start Output
     hm_formatter = Harmonizer(df_scoring.columns, returnVariantID=args.addVariantID)
     chrcount = 0
-    hm_counts = {}
     hm_Passed = True
     while hm_Passed is True:
         try:
@@ -424,12 +427,6 @@ def run_HmVCF(args):
                                           original_build=header['genome_build'])
                 df_chrom.columns = hm_formatter.cols_order
 
-                for hm_code, hm_count in dict(df_chrom['hm_code'].value_counts()).items():
-                    if hm_code in hm_counts:
-                        hm_counts[hm_code] += hm_count
-                    else:
-                        hm_counts[hm_code] = hm_count
-
                 if chrcount == 0:
                     df_harmonized = df_chrom[df_chrom['chr_name'] != ''].copy()
                     df_harmonized_unmapped = df_chrom[df_chrom['chr_name'] == ''].copy()
@@ -443,12 +440,27 @@ def run_HmVCF(args):
 
     if hm_Passed == 'COMPLETED':
         # Sort the harmonized variants DF
-        df_harmonized.chr_name = df_harmonized.chr_name.astype(int)
+        df_harmonized.chr_name = pd.Categorical(df_harmonized.chr_name, categories=chromosomes)
         df_harmonized.chr_position = df_harmonized.chr_position.astype(int)
         df_harmonized = df_harmonized.sort_values(by=['chr_name', 'chr_position'], axis =0)
         df_harmonized.chr_name = df_harmonized.chr_name.astype(str)
         df_harmonized.chr_position = df_harmonized.chr_position.astype(str)
 
+        # Check for duplicated variants (either by ID or by chr:pos:a1:a2)
+        hasduplicates, isduplicated_tf = CheckDuplicatedVariants(df_harmonized)
+        if hasduplicates is True:
+            print('WARNING: {} duplicate variants are present'.format(sum(isduplicated_tf)))
+            df_harmonized.loc[isduplicated_tf] = df_harmonized.loc[isduplicated_tf].apply(RecodeDuplicatedHmInfo, axis=1)
+
+        # Count hm_codes
+        hm_counts = dict(df_harmonized['hm_code'].value_counts())
+        for hm_code, hm_count in dict(df_harmonized_unmapped['hm_code'].value_counts()).items():
+            if hm_code in hm_counts:
+                hm_counts[hm_code] += hm_count
+            else:
+                hm_counts[hm_code] = hm_count
+
+        # Prepare header
         header['HmVCF_date'] = str(datetime.date(datetime.now()))
         if usingCohortVCF is not None:
             header['HmVCF_ref'] = usingCohortVCF
@@ -471,6 +483,12 @@ def run_HmVCF(args):
             print('Harmonized {} -> {}'.format(hm_counts, loc_hm_out))
             hm_out.close()
         else:
+            # Check if duplicates have to be removed
+            if args.keep_duplicates is False:
+                df_harmonized_unmapped = pd.concat([df_harmonized.loc[df_harmonized['hm_code'] == '1'], df_harmonized_unmapped])
+                df_harmonized = df_harmonized.loc[df_harmonized['hm_code'] != '1']
+
+
             # Write matched variants
             loc_hm_out_matched = loc_hm_out.replace('.txt', '.matched.txt')
             if args.gzip is True:

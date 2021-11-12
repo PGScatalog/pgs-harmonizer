@@ -293,5 +293,40 @@ class Harmonizer:
         return pd.Series(l_output)
 
 
+#####
+# Functions to Check/Handle Duplicate Variants
+####
+
+
+def make_vid2(hrow):
+    """New variant_id for finding duplicates with swapped effect/non-effect alleles"""
+    vid = list(hrow[['chr_name', 'chr_position']]) + sorted(hrow[['effect_allele', 'other_allele']])
+    return ':'.join(map(str, vid))
+
+
+def CheckDuplicatedVariants(harm_df):
+    """A function to check for duplicated variants (either by ID or by chr:pos:a1:a2)"""
+    flag_duplicates = False
+
+    vid2 = harm_df.apply(make_vid2, axis=1)
+
+    dup_ids = set(harm_df.loc[harm_df['variant_id'].duplicated(), 'variant_id'])
+    if '.' in dup_ids:
+        dup_ids.remove('.')
+    n_dup_ids = len(dup_ids)
+
+    dupd_tf = harm_df['variant_id'].isin(dup_ids) | vid2.duplicated(keep=False)
+    if sum(dupd_tf) > 0:
+        flag_duplicates = True
+
+    return flag_duplicates, dupd_tf
+
+
+def RecodeDuplicatedHmInfo(row):
+    newinfo = json.loads(row['hm_info'])
+    newinfo['hm_code_original'] = row['hm_code']
+    row['hm_code'] = '1'
+    row['hm_info'] = json.dumps(newinfo)
+    return row
 
 

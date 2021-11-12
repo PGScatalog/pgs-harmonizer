@@ -87,10 +87,11 @@ optional arguments:
   --split_unmappable  This flag will write unmapped & uncorrected variants
                       (hm_code < 0) to separate files (suffixes: [.mapped,
                       .unmatched])
+  --keep_duplicates   This flag will allows duplicate variants to be present
+                      in the mapped variant file. The default behaviour is to
+                      drop them.
   --gzip              Writes gzipped harmonized output
   --silent_tqdm       Disables tqdm progress bar
-(pgs-harmonizer) cmpc373:pgs-harmonizer sl925$ 
-
 </pre>
 
 ## Examples
@@ -138,6 +139,7 @@ ENDFOR
      |    |         ambiguous orientations exist at the locus]           |
      | 3  | Mapped [variant in REFERENCE VCF with ambiguous orientation  |
      |    |         (e.g. A/T, C/G variants) ]                           |
+     | 1  | Duplicated harmonized variant (multiple lines map to 1 ID    |
      | 0  | Author-reported variant information (not found in VCF)       |
      |-1  | Unable to map the variant                                    |
      |-4  | Strands flipped? [reverse complement alleles exist in VCF,   |
