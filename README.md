@@ -113,23 +113,9 @@ To test that the pipeline can run try these commands on the test data in the pro
     python Harmonize.py HmPOS PGS000065 GRCh38 -loc_files ./test_data/ --gzip
     python Harmonize.py HmVCF PGS000065 GRCh38 --gzip
    
-## pseudocode (adapted from GWAS Catalog [README](https://github.com/EBISPOT/sum-stats-formatter/blob/master/harmonisation/README.md))
-<pre>READ/PARSE PGS Scoring File and headers
-
-FOR each variant
-    IF RSID maps to genomic location in Ensembl THEN
-        update locations based on Ensembl mapping
-        IF RSID != original RSID THEN
-            update rsID (provide original rsID in hm_info)
-    ELIF Able to liftover locations to current build THEN
-        liftover locations to current build
-    ELSE
-        *flag* variant and provide original mappings in hm_info column as dictionary
-    ENDIF
-    
-    CHECK variant alleles against ENSEMBL or cohort-specific VCF and flag if the alleles are consistent (e.g. present, flipped, palindromic, etc)    
-ENDFOR
-</pre>
+## Description of Harmonization Codes (`hm_code`)
+Once the HmVCF function is run each variant is assigned a value in the harmonization code (`hm_code`) column that 
+reflects how the variant appears in the target variant data.  
 
      +----+--------------------------------------------------------------+
      |Code|Description of harmonisation process                          |
