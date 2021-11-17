@@ -328,5 +328,3 @@ def RecodeDuplicatedHmInfo(row):
     row['hm_code'] = '1'
     row['hm_info'] = json.dumps(newinfo)
     return row
-
-
