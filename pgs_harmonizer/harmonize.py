@@ -12,7 +12,7 @@ remap_header = {
     'Number of Variants': 'variants_number',
     'PGP ID': 'pgp_id',
     'Citation': 'citation',
-    'LICENSE': 'pgs_license',
+    'LICENSE': 'license',
     # Harmonization related
     'HmPOS Build': 'HmPOS_build',
     'HmPOS Date':'HmPOS_date',
@@ -20,7 +20,7 @@ remap_header = {
     'HmVCF Date': 'HmVCF_date',
     'HmVCF N Matched Variants': 'HmVCF_n_matched',
     'HmVCF N Unmapped Variants': 'HmVCF_n_unmapped'
-} # ToDo remove once Scoring File headers are fixed
+}  # Used to maintain reverse compatibility to old scoring files
 
 
 chromosomes = [str(x) for x in range(1,23)] + ['X', 'Y', 'MT']
@@ -57,22 +57,25 @@ def read_scorefile(loc_scorefile):
             if '=' in line:
                 line = line[1:].split('=')
                 field, val = [x.strip() for x in line]
-                header[remap_header[field]] = val # ToDo change once Scoring File headers are fixed
+                if field in remap_header:
+                    header[remap_header[field]] = val
+                else:
+                    header[field] = val
     f.close()
 
     if ('genome_build' in header) and (header['genome_build'] == 'NR'):
         header['genome_build'] = None
 
     df_scoring = pd.read_table(loc_scorefile, float_precision='round_trip', comment='#',
-                               dtype = {'chr_position' : 'object',
-                                        'chr_name' : 'object',
+                               dtype = {'chr_position': 'object',
+                                        'chr_name': 'object',
                                         'hm_chr': 'object',
                                         'hm_pos': 'object'})
 
-    # Make sure certain columns maintain specific datatypes
     if 'reference_allele' in df_scoring.columns:
         df_scoring = df_scoring.rename(columns={"reference_allele": "other_allele"})
 
+    # Make sure certain columns maintain specific datatypes
     for poscol in ['chr_position', 'hm_pos']:
         if poscol in df_scoring.columns:
             df_scoring.loc[df_scoring[poscol].isnull() == False, poscol] = [conv2int(x) for x in df_scoring.loc[df_scoring[poscol].isnull() == False, poscol]]
@@ -83,40 +86,43 @@ def read_scorefile(loc_scorefile):
 def create_scoringfileheader(h, skipfields=[]):
     """Function to extract score & publication information for the PGS Catalog Scoring File commented header"""
     # Recreate original header
-    lines = [
-        '### PGS CATALOG SCORING FILE - see www.pgscatalog.org/downloads/#dl_ftp for additional information',
-        '## POLYGENIC SCORE (PGS) INFORMATION',
-        '# PGS ID = {}'.format(h['pgs_id'])
-    ]
-    if 'pgs_name' in h:
-        lines.append('# PGS Name = {}'.format(h['pgs_name']))
-    lines += ['# Reported Trait = {}'.format(h['trait_reported']),
-              '# Original Genome Build = {}'.format(str(h['genome_build']).replace('None', 'NR')),
-              '# Number of Variants = {}'.format(h['variants_number']),
-              '## SOURCE INFORMATION',
-              '# PGP ID = {}'.format(h['pgp_id']),
-              '# Citation = {}'.format(h['citation'])
-    ]
-    if 'pgs_license' in h:
-        lines.append('# LICENSE = {}'.format(h['pgs_license']))  # Append to header
+    lines = ['###PGS CATALOG SCORING FILE - see https://www.pgscatalog.org/downloads/#dl_ftp_scoring for additional information']
+    if 'format_version' in h:
+        lines.append(f'#format_version={h["format_version"]}')
+    # PGS Info
+    fields_info = ['pgs_id', 'pgs_name', 'trait_reported', 'trait_mapped', 'trait_efo', 'genome_build', 'variants_number', 'weight_type']
+    if any([x in h for x in fields_info]):
+        lines.append('##POLYGENIC SCORE (PGS) INFORMATION')
+        for f in fields_info:
+            if f in h:
+                lines.append(f'#{f}={h[f]}')
+
+    # Source Information
+    fields_source = ['pgp_id', 'citation', 'license']
+    if any([x in h for x in fields_source]):
+        lines.append('##SOURCE INFORMATION')
+        for f in fields_source:
+            if f in h:
+                lines.append(f'#{f}={h[f]}')
 
     # Add Harmonization Details
-    ## HmPOS
     if 'HmPOS_build' in h:
+        # Add HmPOS details
         lines += ['## HARMONIZATION DETAILS',
-                  '# HmPOS Build = {}'.format(h['HmPOS_build']),
-                  '# HmPOS Date = {}'.format(h['HmPOS_date'])
+                  '#HmPOS_build={}'.format(h['HmPOS_build']),
+                  '#HmPOS_date={}'.format(h['HmPOS_date'])
                   ]
         if 'HmVCF_ref' in h:
-            lines += ['# HmVCF Reference = {}'.format(h['HmVCF_ref']),
-                      '# HmVCF Date = {}'.format(h['HmVCF_date'])
+            # Add HmVCF details
+            lines += ['#HmVCF_ref={}'.format(h['HmVCF_ref']),
+                      '#HmVCF_date={}'.format(h['HmVCF_date'])
                       ]
             # N Matched Variants
             if ('HmVCF_n_matched' in h) and ('HmVCF_n_matched' not in skipfields):
-                lines.append('# HmVCF N Matched Variants = {}'.format(h['HmVCF_n_matched']))
+                lines.append('#HmVCF_n_matched={}'.format(h['HmVCF_n_matched']))
             # N Unmatched Variants
             if ('HmVCF_n_unmapped' in h) and ('HmVCF_n_unmapped' not in skipfields):
-                lines.append('# HmVCF N Unmapped Variants = {}'.format(h['HmVCF_n_unmapped']))
+                lines.append('#HmVCF_n_unmapped={}'.format(h['HmVCF_n_unmapped']))
     return lines
 
 
