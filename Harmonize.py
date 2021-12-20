@@ -469,7 +469,10 @@ def run_HmVCF(args):
             list_header = create_scoringfileheader(header, skipfields=[])
             hm_out.write('\n'.join(list_header) + '\n')
             df_harmonized.to_csv(hm_out, mode='a', index=False, sep='\t', quotechar="'")  # Write output using pandas
-            print('Harmonized {} -> {}'.format(hm_counts, loc_hm_out))
+            if args.gzip is True:
+                print(f'Harmonized {hm_counts} -> {loc_hm_out}.gz')
+            else:
+                print(f'Harmonized {hm_counts} -> {loc_hm_out}')
             hm_out.close()
         else:
             # Check if duplicates have to be removed
