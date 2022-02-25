@@ -3,6 +3,7 @@ import time
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError
 import pandas as pd
+import sqlite3
 from pgs_harmonizer.harmonize import reversecomplement
 
 
@@ -100,7 +101,7 @@ class VariationResult:
         return oa
 
     def synonyms(self):
-        return self.json_result['synonyms']
+        return self.json_result.get('synonyms')
 
 
 def all_same(items):
@@ -172,43 +173,50 @@ def clean_rsIDs(raw_rslist):
                         cln_rslist.add(i)
     return(list(cln_rslist))
 
-def parse_var2location(loc_var2location_results, rsIDs = None):
-    """Reads results of var2location.pl mapping into the same class as the ENSEMBL API results"""
-    d_byq = {}
-    if type(rsIDs) == list:
-        rsIDs = set(rsIDs)
-        with open(loc_var2location_results, 'r') as infile:
-            for line in infile:
-                line = line.strip('\n').split('\t')
-                query_rsid = line[0]
-                if query_rsid in rsIDs: # Filters the UNION rsIDs to only return the relevant mappings as VariantResults
-                    if query_rsid in d_byq:
-                        d_byq[query_rsid].append(line)
-                    else:
-                        d_byq[query_rsid] = [line]
-    else:
-        with open(loc_var2location_results, 'r') as infile:
-            for line in infile:
-                line = line.strip('\n').split('\t')
-                query_rsid = line[0]
-                if query_rsid in d_byq:
-                    d_byq[query_rsid].append(line)
-                else:
-                    d_byq[query_rsid] = [line]
-
+def parse_var2location(loc_var2location_db, rsIDs = None):
+    """Reads results of var2location DB into the same class as the ENSEMBL API results"""
     results = {}
-    for query_rsid, values in d_byq.items():
-        q_json = {'name': values[0][1],
-                  'mappings': []}
-        for line in values:
-            mappedloc = {'allele_string': line[2],
-                         'seq_region_name': line[3],
-                         'start': int(line[4]),
-                         'end': int(line[5])}
-            q_json['mappings'].append(mappedloc)
 
-        results[query_rsid] = VariationResult(values[0][1], q_json)
-        if query_rsid != values[0][1]:
-            results[values[0][1]] = VariationResult(values[0][1], q_json)
+    sqlite_connection = sqlite3.connect(loc_var2location_db)
+
+    # Too Slow
+    # if type(rsIDs) == list:
+    #     print('reading filtered')
+    #     var2location = pd.read_sql_query("SELECT * FROM variant_coords WHERE varname IN {}".format(tuple(rsIDs)),
+    #                                      sqlite_connection)
+    # else:
+    #     print('reading all')
+    #     var2location = pd.read_sql_query("SELECT * FROM variant_coords", sqlite_connection)
+    #
+    # var2location.columns = ['query_rsid', 'current_rsid', 'seq_region_name', 'start', 'end', 'allele_string']
+    #
+    # print('Looping')
+    # for query_rsid, maps in var2location.groupby('query_rsid'):
+    #     mapped_ids = list(set(maps['current_rsid']))
+    #     if len(mapped_ids) == 1:
+    #         results[query_rsid] = VariationResult(mapped_ids[0], {'name': mapped_ids[0],
+    #                                                      'mappings': maps[['seq_region_name', 'start', 'end', 'allele_string']].to_dict('records')})
+    #     else:
+    #         print('WARNING')
+
+    sqlite_cursor = sqlite_connection.cursor()
+    if type(rsIDs) == list:
+        qcursor = sqlite_cursor.execute("SELECT * FROM variant_coords WHERE varname IN {}".format(tuple(rsIDs)))
+    else:
+        qcursor = sqlite_cursor.execute("SELECT * FROM variant_coords")
+
+    for line in qcursor:
+        query_rsid, current_rsid, seq_region_name, start, end, allele_string = line
+        if query_rsid in results:
+            results[query_rsid].json_result['mappings'].append({'seq_region_name': seq_region_name,
+                                                                               'start': start,
+                                                                               'end': end,
+                                                                               'allele_string': allele_string})
+        else:
+            results[query_rsid] = VariationResult(current_rsid, {'name': current_rsid,
+                                                                 'mappings': [{'seq_region_name': seq_region_name,
+                                                                               'start': start,
+                                                                               'end': end,
+                                                                               'allele_string': allele_string}]})
 
     return results

@@ -25,9 +25,13 @@ parser_POS.add_argument("-loc_hmoutput", dest="loc_outputs",
                         help="Directory where the harmonization output will be saved (default: PGS_HmPOS/)",
                         metavar="DIR",
                         default='./PGS_HmPOS/', required=False)
-parser_POS.add_argument('--var2location',
-                        help='Root directory to the annotations from the var2location.pl script (ENSEMBL SQL connection)',
-                        metavar="DIR", required=False)
+parser_POS.add_argument('-var2location',
+                        help='Root directory where DB of PGS Catalog rsID to chr/pos mappings is stored (default: '
+                             './EnsemblMappings)',
+                        metavar="DIR",
+                        default='./EnsemblMappings/', required=False)
+parser_POS.add_argument('--useAPI', help='Uses the ENSEMBL API (not tractable for scores >1000 variants)',
+                        action='store_true', required=False)
 parser_POS.add_argument('--silent_tqdm', help='Disables tqdm progress bar',
                         action='store_true', required=False)
 parser_POS.add_argument('--ignore_rsid', help='Ignores rsID mappings and harmonizes variants using only liftover',
@@ -217,17 +221,19 @@ def run_HmPOS(args, chunksize=100000):
 
     # Source ENSEMBL DB/API variant mappings if required
     mapping_ensembl = None
-    if 'rsID' in df_scoring.columns and args.ignore_rsid is False:
+    if ('rsID' in df_scoring.columns) and (args.ignore_rsid is False):
         tomap_rsIDs = clean_rsIDs(list(df_scoring['rsID']))
-        use_rest = True
-        if args.var2location:
-            loc_var2location = args.var2location
-            if os.path.isdir(loc_var2location):
-                use_rest = False
-                mapping_ensembl = parse_var2location(loc_var2location)
-        if use_rest == True:
+        if args.useAPI is True:
             print('Retrieving rsID mappings from ENSEMBL API')
             mapping_ensembl = ensembl_post(tomap_rsIDs, args.target_build)  # Retrieve the SNP info from ENSEMBL
+        else:
+            loc_var2location = args.var2location + 'variant_locations_{}.db'.format(args.target_build[-2:])
+            if os.path.isfile(loc_var2location):
+                print('Loading rsID mappings from DB')
+                mapping_ensembl = parse_var2location(loc_var2location, rsIDs=tomap_rsIDs)
+            else:
+                print('Missing EnsemblDB in location: {}'.format(loc_var2location))
+
     # Start Output
 
     if args.gzip is True:
@@ -249,7 +255,7 @@ def run_HmPOS(args, chunksize=100000):
             start = ic*chunksize
             end = start + chunksize
             try:
-                df_chunk = df_scoring.iloc[start:end,:].copy()
+                df_chunk = df_scoring.iloc[start:end, :].copy()
                 #print(start, end, df_chunk.index[0], df_chunk.index[-1])
                 df_chunk[['hm_source', 'hm_rsID', 'hm_chr', 'hm_pos', 'hm_inferOtherAllele']] = df_chunk.apply(variant_HmPOS,
                                                                                                                axis=1,
