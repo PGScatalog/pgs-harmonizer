@@ -9,6 +9,7 @@ variant batches using the Ensembl API. There are ways to speed this up by lookin
 
 ## Requirements
 - Python packages: requests, pandas, pyliftover, tqdm, cyvcf2
+- PGS Catalog rsID -> position mappings (downloadable from ...)
 - VCFs from Ensembl (in `/map/vcf_ref/`) or a specific cohort (in `/map/cohort_ref/`). Ensembl VCFs can be downloaded 
 by running the `DownloadMappings.py` script in the project directory.
 
@@ -48,8 +49,10 @@ optional arguments:
                         scoring file header]
   -loc_hmoutput DIR     Directory where the harmonization output will be saved
                         (default: PGS_HmPOS/)
-  --var2location        Uses the annotations from the var2location.pl script
-                        (ENSEMBL SQL connection)
+  -var2location DIR     Root directory where DB of PGS Catalog rsID to chr/pos
+                        mappings is stored (default: ./EnsemblMappings)
+  --useAPI              Uses the ENSEMBL API (not tractable for scores >1000
+                        variants)
   --silent_tqdm         Disables tqdm progress bar
   --ignore_rsid         Ignores rsID mappings and harmonizes variants using
                         only liftover
