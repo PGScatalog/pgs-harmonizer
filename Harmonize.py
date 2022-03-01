@@ -251,7 +251,7 @@ def run_HmPOS(args, chunksize=100000):
     hm_counts = {}
     hm_chunks = int(np.ceil(df_scoring.shape[0] / chunksize))
     while hm_Passed is True:
-        for ic in tqdm(range(0, hm_chunks)):
+        for ic in tqdm(range(0, hm_chunks), desc='Mapping Variant Positions (chunksize={})'.format(chunksize)):
             start = ic*chunksize
             end = start + chunksize
             try:
@@ -434,6 +434,7 @@ def run_HmVCF(args):
             hm_Passed = False
 
     if hm_Passed == 'COMPLETED':
+        print('Combining Harmonized Data')
         # Sort the harmonized variants DF
         df_harmonized.chr_name = pd.Categorical(df_harmonized.chr_name, categories=chromosomes)
         df_harmonized.chr_position = df_harmonized.chr_position.astype(int)
@@ -442,6 +443,7 @@ def run_HmVCF(args):
         df_harmonized.chr_position = df_harmonized.chr_position.astype(str)
 
         # Check for duplicated variants (either by ID or by chr:pos:a1:a2)
+        print('Checking For Duplicate Variants')
         hasduplicates, isduplicated_tf = CheckDuplicatedVariants(df_harmonized)
         if hasduplicates is True:
             print('WARNING: {} duplicate variants are present'.format(sum(isduplicated_tf)))
@@ -464,6 +466,8 @@ def run_HmVCF(args):
         header['HmVCF_n_matched'] = df_harmonized.shape[0]
         header['HmVCF_n_unmapped'] = df_harmonized_unmapped.shape[0]
 
+        # Data Output
+        print('Writing Harmonized Files')
         if args.split_unmappable is False:
             # Merge w/ unharmonized variants
             df_harmonized = pd.concat([df_harmonized, df_harmonized_unmapped])
