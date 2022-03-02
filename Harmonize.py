@@ -27,9 +27,9 @@ parser_POS.add_argument("-loc_hmoutput", dest="loc_outputs",
                         default='./PGS_HmPOS/', required=False)
 parser_POS.add_argument('-var2location',
                         help='Root directory where DB of PGS Catalog rsID to chr/pos mappings is stored (default: '
-                             './EnsemblMappings)',
+                             './map/ENSEMBL/)',
                         metavar="DIR",
-                        default='./EnsemblMappings/', required=False)
+                        default='./map/ENSEMBL/', required=False)
 parser_POS.add_argument('--useAPI', help='Uses the ENSEMBL API (not tractable for scores >1000 variants)',
                         action='store_true', required=False)
 parser_POS.add_argument('--silent_tqdm', help='Disables tqdm progress bar',
@@ -438,7 +438,7 @@ def run_HmVCF(args):
         # Sort the harmonized variants DF
         df_harmonized.chr_name = pd.Categorical(df_harmonized.chr_name, categories=chromosomes)
         df_harmonized.chr_position = df_harmonized.chr_position.astype(int)
-        df_harmonized = df_harmonized.sort_values(by=['chr_name', 'chr_position'], axis =0)
+        df_harmonized = df_harmonized.sort_values(by=['chr_name', 'chr_position'], axis=0)
         df_harmonized.chr_name = df_harmonized.chr_name.astype(str)
         df_harmonized.chr_position = df_harmonized.chr_position.astype(str)
 

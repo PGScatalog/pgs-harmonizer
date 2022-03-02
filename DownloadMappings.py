@@ -40,4 +40,6 @@ for build in vcf_builds:
         except:
             print('! ERROR downloading:', build, 'chr{}'.format(chr))
 
+    # ToDo: Download variant_location_37/38 from PGS Catalog FTP (to be distributed/updated each release)
+
 ensembl_ftp.quit()
