@@ -53,6 +53,8 @@ optional arguments:
                         mappings is stored (default: ./EnsemblMappings)
   --useAPI              Uses the ENSEMBL API (not tractable for scores >1000
                         variants)
+  --catchmissingAPI     Query the ENSEMBL API for variants missing from the
+                        PGS Catalog var2location DB
   --silent_tqdm         Disables tqdm progress bar
   --ignore_rsid         Ignores rsID mappings and harmonizes variants using
                         only liftover

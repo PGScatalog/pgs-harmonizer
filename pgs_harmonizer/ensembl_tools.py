@@ -173,7 +173,7 @@ def clean_rsIDs(raw_rslist):
                         cln_rslist.add(i)
     return(list(cln_rslist))
 
-def parse_var2location(loc_var2location_db, rsIDs = None):
+def parse_var2location(loc_var2location_db, rsIDs = None, catchAPI=True):
     """Reads results of var2location DB into the same class as the ENSEMBL API results"""
     results = {}
 
@@ -201,9 +201,9 @@ def parse_var2location(loc_var2location_db, rsIDs = None):
 
     sqlite_cursor = sqlite_connection.cursor()
     if type(rsIDs) == list:
-        qcursor = sqlite_cursor.execute("SELECT * FROM variant_coords WHERE varname IN {}".format(tuple(rsIDs)))
+        qcursor = sqlite_cursor.execute("SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles  FROM variant vlist LEFT JOIN variant_coords vc ON vlist.varname = vc.varname WHERE vlist.varname IN {}".format(tuple(rsIDs)))
     else:
-        qcursor = sqlite_cursor.execute("SELECT * FROM variant_coords")
+        qcursor = sqlite_cursor.execute("SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles  FROM variant vlist LEFT JOIN variant_coords vc ON vlist.varname = vc.varname")
 
     for line in qcursor:
         query_rsid, current_rsid, seq_region_name, start, end, allele_string = line
@@ -218,5 +218,15 @@ def parse_var2location(loc_var2location_db, rsIDs = None):
                                                                                'start': start,
                                                                                'end': end,
                                                                                'allele_string': allele_string}]})
+
+    # Cleanup w/ ENSEMBL API
+    if catchAPI is True:
+        id_set = set(rsIDs)
+        missing = id_set.difference(results.keys())
+        if len(missing) > 0:
+            print('! Attempting to get {} missing mappings via ENSEMBL'.format(len(missing)))
+            mapping_ensembl = ensembl_post(list(missing))
+            if len(mapping_ensembl) > 0:
+                results.update(mapping_ensembl)
 
     return results

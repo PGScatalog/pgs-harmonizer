@@ -32,6 +32,9 @@ parser_POS.add_argument('-var2location',
                         default='./map/ENSEMBL/', required=False)
 parser_POS.add_argument('--useAPI', help='Uses the ENSEMBL API (not tractable for scores >1000 variants)',
                         action='store_true', required=False)
+parser_POS.add_argument('--catchmissingAPI', help='Query the ENSEMBL API for variants missing from the PGS Catalog '
+                                                  'var2location DB',
+                        action='store_true', required=False)
 parser_POS.add_argument('--silent_tqdm', help='Disables tqdm progress bar',
                         action='store_true', required=False)
 parser_POS.add_argument('--ignore_rsid', help='Ignores rsID mappings and harmonizes variants using only liftover',
@@ -230,7 +233,7 @@ def run_HmPOS(args, chunksize=100000):
             loc_var2location = args.var2location + 'variant_locations_{}.db'.format(args.target_build[-2:])
             if os.path.isfile(loc_var2location):
                 print('Loading rsID mappings from DB')
-                mapping_ensembl = parse_var2location(loc_var2location, rsIDs=tomap_rsIDs)
+                mapping_ensembl = parse_var2location(loc_var2location, rsIDs=tomap_rsIDs, catchAPI=args.catchmissingAPI)
             else:
                 print('Missing EnsemblDB in location: {}'.format(loc_var2location))
 
