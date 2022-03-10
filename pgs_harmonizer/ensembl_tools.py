@@ -32,11 +32,13 @@ class VariationResult:
                 bp.append(mapping['start'])
                 chrom.append(mapping['seq_region_name'])
                 alleles.append(mapping['allele_string'].split('/'))
-        if (len(bp) == 1) or (len(bp) > 1 and all_same(bp)):
-            self.chrom = chrom[0]
-            self.bp = bp[0]
-            self.alleles = alleles[0]
-            self.alleles_rc = [reversecomplement(x) for x in self.alleles]
+
+        if len(bp) >= 1: # Checks that there are mappings
+            if (len(bp) == 1) or (all_same(chrom) and all_same(bp)): # Checks for unique/consistent mappings (same coordinates)
+                self.chrom = chrom[0]
+                self.bp = bp[0]
+                self.alleles = alleles[0]
+                self.alleles_rc = [reversecomplement(x) for x in self.alleles]
 
         return self.chrom, self.bp, self.alleles
 
@@ -201,9 +203,9 @@ def parse_var2location(loc_var2location_db, rsIDs = None, catchAPI=True):
 
     sqlite_cursor = sqlite_connection.cursor()
     if type(rsIDs) == list:
-        qcursor = sqlite_cursor.execute("SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles  FROM variant vlist LEFT JOIN variant_coords vc ON vlist.varname = vc.varname WHERE vlist.varname IN {}".format(tuple(rsIDs)))
+        qcursor = sqlite_cursor.execute("SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles FROM variant vlist LEFT JOIN variant_coords vc ON vlist.current_varname = vc.current_varname WHERE vlist.varname IN {}".format(tuple(rsIDs)))
     else:
-        qcursor = sqlite_cursor.execute("SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles  FROM variant vlist LEFT JOIN variant_coords vc ON vlist.varname = vc.varname")
+        qcursor = sqlite_cursor.execute("SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles FROM variant vlist LEFT JOIN variant_coords vc ON vlist.current_varname = vc.current_varname")
 
     for line in qcursor:
         query_rsid, current_rsid, seq_region_name, start, end, allele_string = line

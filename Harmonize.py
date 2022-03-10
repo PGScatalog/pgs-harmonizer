@@ -121,7 +121,8 @@ def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOthe
                     hm_inferOtherAllele = v_map.infer_OtherAllele(v['effect_allele'])
             else:
                 hm_inferOtherAllele = v_map.infer_OtherAllele(v['effect_allele'])  # Based on the rsID
-    elif 'chr_name' and 'chr_position' in v:
+
+    if (hm_pos in [None, '']) and ('chr_name' and 'chr_position' in v):
         if isSameBuild:
             hm_chr = v['chr_name']
             hm_pos = v['chr_position']
@@ -130,6 +131,10 @@ def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOthe
             if (pd.isnull(v['chr_name']) is False) and (pd.isnull(v['chr_position']) is False):
                 hm_chr, hm_pos, hm_liftover_multimaps = list(liftchain.lift(v['chr_name'], v['chr_position']))  # liftover
                 hm_source = 'liftover'
+        # If it's a failed rsID mapping
+        if hm_rsID != '':
+            hm_rsID = ''  # Reset if it's a failed rsID mapping
+
     if all([x == '' for x in [hm_chr, hm_pos]]):
         hm_source = 'Unknown'
 
