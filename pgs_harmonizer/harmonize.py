@@ -286,7 +286,7 @@ class Harmonizer:
                         hm_info['variant_id'] = v['hm_vid']
                     l_output[i] = missing_val
                 elif colname in ['effect_allele', 'other_allele']:
-                    val = v[colname]
+                    val = v.get(colname)
                     if pd.isnull(val) is False:
                         hm_info[colname] = val
                 elif colname == 'hm_info':
