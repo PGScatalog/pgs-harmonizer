@@ -168,7 +168,7 @@ def run_HmPOS(args, chunksize=100000):
         ofolder = ofolder[:-1]
     if os.path.isdir(ofolder) is False:
         os.mkdir(ofolder)
-    loc_hm_out = '{}/{}_hmPOS{}.txt'.format(ofolder, args.pgs_id, args.target_build)
+    loc_hm_out = '{}/{}_hmPOS_{}.txt'.format(ofolder, args.pgs_id, args.target_build)
     if args.gzip is True:
         loc_hm_out += '.gz'
 
@@ -360,9 +360,9 @@ def run_HmVCF(args):
     if 'loc_scorefiles' in args:
         if not args.loc_scorefiles.endswith('/'):
             args.loc_scorefiles += '/'
-        loc_scorefile = args.loc_scorefiles + '{}_hmPOS{}.txt.gz'.format(args.pgs_id, args.target_build)
+        loc_scorefile = args.loc_scorefiles + '{}_hmPOS_{}.txt.gz'.format(args.pgs_id, args.target_build)
     else:
-        loc_scorefile = 'PGS_HmPOS/{}_hmPOS{}.txt.gz'.format(args.pgs_id, args.target_build)
+        loc_scorefile = 'PGS_HmPOS/{}_hmPOS_{}.txt.gz'.format(args.pgs_id, args.target_build)
     try:
         print('Reading Score File')
         header, df_scoring = read_scorefile(loc_scorefile)
@@ -384,11 +384,11 @@ def run_HmVCF(args):
     if args.cohort_name is not None:
         vcfs_targetbuild = VCFs(build=args.target_build, cohort_name=args.cohort_name, loc_vcfref=args.loc_vcfref)
         usingCohortVCF = args.cohort_name
-        loc_hm_out = '{}/{}_hmVCF{}_{}.txt'.format(ofolder, args.pgs_id, args.target_build, usingCohortVCF)
+        loc_hm_out = '{}/{}_hmVCF_{}_{}.txt'.format(ofolder, args.pgs_id, args.target_build, usingCohortVCF)
         args.addOtherAllele = True
     else:
         vcfs_targetbuild = VCFs(build=args.target_build, loc_vcfref=args.loc_vcfref)  # ENSEMBL VCF
-        loc_hm_out = '{}/{}_hmVCF{}.txt'.format(ofolder, args.pgs_id, args.target_build)
+        loc_hm_out = '{}/{}_hmVCF_{}.txt'.format(ofolder, args.pgs_id, args.target_build)
     if (vcfs_targetbuild.VCF is None) and (len(vcfs_targetbuild.by_chr) == 0):
         print('ERROR: Could not find the VCF')
         raise IOError
