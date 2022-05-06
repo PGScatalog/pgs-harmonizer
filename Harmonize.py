@@ -261,9 +261,9 @@ def run_HmPOS(args, chunksize=100000):
     if isSameBuild:
         hm_matches = {}
         if 'chr_name' in df_scoring.columns:
-            hm_matches['chr_name'] = {}
+            hm_matches['chr_name'] = {True: 0, False: 0}
         if 'chr_position' in df_scoring.columns:
-            hm_matches['chr_position'] = {}
+            hm_matches['chr_position'] = {True: 0, False: 0}
     else:
         hm_matches = None
 
@@ -288,8 +288,7 @@ def run_HmPOS(args, chunksize=100000):
                     if 'chr_name' in df_scoring.columns:
                         df_chunk['hm_match_chr'] = np.nan
                         i_chr_notnull = (df_chunk['chr_name'].isnull() == False)
-                        df_chunk.loc[i_chr_notnull & (df_chunk['chr_name'] == df_chunk['hm_chr']), 'hm_match_chr'] = True
-                        df_chunk.loc[i_chr_notnull & (df_chunk['chr_name'] != df_chunk['hm_chr']), 'hm_match_chr'] = False
+                        df_chunk.loc[i_chr_notnull, 'hm_match_chr'] = (df_chunk.loc[i_chr_notnull, 'chr_name'] == df_chunk.loc[i_chr_notnull, 'hm_chr'])
 
                         for hm_source, hm_count in dict(df_chunk['hm_match_chr'].value_counts()).items():
                             if hm_source in hm_matches['chr_name']:
@@ -299,8 +298,7 @@ def run_HmPOS(args, chunksize=100000):
                     if 'chr_position' in df_scoring.columns:
                         df_chunk['hm_match_pos'] = np.nan
                         i_pos_notnull = (df_chunk['chr_position'].isnull() == False)
-                        df_chunk.loc[i_pos_notnull & (df_chunk['chr_position'] == df_chunk['hm_pos']), 'hm_match_pos'] = True
-                        df_chunk.loc[i_pos_notnull & (df_chunk['chr_position'] != df_chunk['hm_pos']), 'hm_match_pos'] = False
+                        df_chunk.loc[i_pos_notnull, 'hm_match_pos'] = (df_chunk.loc[i_pos_notnull, 'chr_position'] == df_chunk.loc[i_pos_notnull, 'hm_pos'])
                         for hm_source, hm_count in dict(df_chunk['hm_match_pos'].value_counts()).items():
                             if hm_source in hm_matches['chr_name']:
                                 hm_matches['chr_position'][hm_source] += hm_count
@@ -327,7 +325,7 @@ def run_HmPOS(args, chunksize=100000):
         print('Mapped {} -> {}'.format(header['pgs_id'], loc_hm_out))
         print('Variant Sources: {}'.format(hm_counts))
         if hm_matches:
-            print('Summary of Annotation Matches: {}'.format(hm_matches))
+            print('Comparison of rsID vs. author-reported positions: {}'.format(hm_matches))
         return
     else:
         hm_out.close()
