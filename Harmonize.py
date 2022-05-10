@@ -255,11 +255,23 @@ def run_HmPOS(args, chunksize=100000):
     hm_out.write('\n'.join(create_scoringfileheader(header)))
     hm_out.write('\n')
 
+    # Initialize harmonization tracking
     hm_Passed = True
     hm_counts = {}
+    if isSameBuild:
+        hm_matches = {}
+        if 'chr_name' in df_scoring.columns:
+            hm_matches['chr_name'] = {True: 0, False: 0}
+        if 'chr_position' in df_scoring.columns:
+            hm_matches['chr_position'] = {True: 0, False: 0}
+    else:
+        hm_matches = None
+
+    # Start loop through scoring file
     hm_chunks = int(np.ceil(df_scoring.shape[0] / chunksize))
+    pbar = tqdm(desc='Mapping Variant Positions (chunksize={})'.format(chunksize), total=df_scoring.shape[0])
     while hm_Passed is True:
-        for ic in tqdm(range(0, hm_chunks), desc='Mapping Variant Positions (chunksize={})'.format(chunksize)):
+        for ic in range(0, hm_chunks):
             start = ic*chunksize
             end = start + chunksize
             try:
@@ -271,6 +283,29 @@ def run_HmPOS(args, chunksize=100000):
                                                                                                                liftchain=build_map,
                                                                                                                isSameBuild=isSameBuild,
                                                                                                                inferOtherAllele=True)
+                # Compare harmonized to author-reported locations if variants are supposed to be in the same build
+                if isSameBuild:
+                    if 'chr_name' in df_scoring.columns:
+                        df_chunk['hm_match_chr'] = np.nan
+                        i_chr_notnull = (df_chunk['chr_name'].isnull() == False)
+                        df_chunk.loc[i_chr_notnull, 'hm_match_chr'] = (df_chunk.loc[i_chr_notnull, 'chr_name'] == df_chunk.loc[i_chr_notnull, 'hm_chr'])
+
+                        for hm_source, hm_count in dict(df_chunk['hm_match_chr'].value_counts()).items():
+                            if hm_source in hm_matches['chr_name']:
+                                hm_matches['chr_name'][hm_source] += hm_count
+                            else:
+                                hm_matches['chr_name'][hm_source] = hm_count
+                    if 'chr_position' in df_scoring.columns:
+                        df_chunk['hm_match_pos'] = np.nan
+                        i_pos_notnull = (df_chunk['chr_position'].isnull() == False)
+                        df_chunk.loc[i_pos_notnull, 'hm_match_pos'] = (df_chunk.loc[i_pos_notnull, 'chr_position'] == df_chunk.loc[i_pos_notnull, 'hm_pos'])
+                        for hm_source, hm_count in dict(df_chunk['hm_match_pos'].value_counts()).items():
+                            if hm_source in hm_matches['chr_name']:
+                                hm_matches['chr_position'][hm_source] += hm_count
+                            else:
+                                hm_matches['chr_position'][hm_source] = hm_count
+
+                # Tally source of variant annotations
                 for hm_source, hm_count in dict(df_chunk['hm_source'].value_counts()).items():
                     if hm_source in hm_counts:
                         hm_counts[hm_source] += hm_count
@@ -282,11 +317,15 @@ def run_HmPOS(args, chunksize=100000):
                     df_chunk.to_csv(hm_out, mode='a', index=False, header=False, sep='\t')  # Write output using pandas
             except:
                 hm_Passed = False
+            pbar.update(end)
         hm_Passed = 'COMPLETED'
-
+    pbar.close()
     if hm_Passed == 'COMPLETED':
         hm_out.close()
-        print('Mapped {} -> {}'.format(hm_counts, loc_hm_out))
+        print('Mapped {} -> {}'.format(header['pgs_id'], loc_hm_out))
+        print('Variant Sources: {}'.format(hm_counts))
+        if hm_matches:
+            print('Comparison of rsID vs. author-reported positions: {}'.format(hm_matches))
         return
     else:
         hm_out.close()

@@ -183,6 +183,10 @@ class Harmonizer:
         self.cols_order = ['chr_name', 'chr_position', 'variant_id',
                            'effect_allele', 'other_allele', 'effect_weight',
                            'hm_code', 'hm_info']
+        if 'hm_match_chr' in self.cols_previous:
+            self.cols_order.append('hm_match_chr')
+        if 'hm_match_pos' in self.cols_previous:
+            self.cols_order.append('hm_match_pos')
         self.cols_extra = []
 
         # Check which other columns need to be added
