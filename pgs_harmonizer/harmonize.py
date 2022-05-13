@@ -112,17 +112,21 @@ def create_scoringfileheader(h, skipfields=[]):
                   '#HmPOS_build={}'.format(h['HmPOS_build']),
                   '#HmPOS_date={}'.format(h['HmPOS_date'])
                   ]
-        if 'HmVCF_ref' in h:
-            # Add HmVCF details
-            lines += ['#HmVCF_ref={}'.format(h['HmVCF_ref']),
-                      '#HmVCF_date={}'.format(h['HmVCF_date'])
-                      ]
-            # N Matched Variants
-            if ('HmVCF_n_matched' in h) and ('HmVCF_n_matched' not in skipfields):
-                lines.append('#HmVCF_n_matched={}'.format(h['HmVCF_n_matched']))
-            # N Unmatched Variants
-            if ('HmVCF_n_unmapped' in h) and ('HmVCF_n_unmapped' not in skipfields):
-                lines.append('#HmVCF_n_unmapped={}'.format(h['HmVCF_n_unmapped']))
+    if 'HmPOS_match_chr' in h:
+        lines.append('#HmPOS_match_chr={}'.format(h['HmPOS_match_chr']))
+    if 'HmPOS_match_pos' in h:
+        lines.append('#HmPOS_match_pos={}'.format(h['HmPOS_match_pos']))
+    if 'HmVCF_ref' in h:
+        # Add HmVCF details
+        lines += ['#HmVCF_ref={}'.format(h['HmVCF_ref']),
+                    '#HmVCF_date={}'.format(h['HmVCF_date'])
+                    ]
+        # N Matched Variants
+        if ('HmVCF_n_matched' in h) and ('HmVCF_n_matched' not in skipfields):
+            lines.append('#HmVCF_n_matched={}'.format(h['HmVCF_n_matched']))
+        # N Unmatched Variants
+        if ('HmVCF_n_unmapped' in h) and ('HmVCF_n_unmapped' not in skipfields):
+            lines.append('#HmVCF_n_unmapped={}'.format(h['HmVCF_n_unmapped']))
     return lines
 
 

@@ -171,6 +171,10 @@ def run_HmPOS(args, chunksize=100000):
     loc_hm_out = '{}/{}_hmPOS_{}.txt'.format(ofolder, args.pgs_id, args.target_build)
     if args.gzip is True:
         loc_hm_out += '.gz'
+    # Temporary file without the commented headers
+    loc_hm_out_data = '{}/{}_hmPOS_data_{}.txt'.format(ofolder, args.pgs_id, args.target_build)
+    if args.gzip is True:
+        loc_hm_out_data += '.gz'
 
     # Read Score File
     print('Reading Score File')
@@ -246,18 +250,22 @@ def run_HmPOS(args, chunksize=100000):
 
     if args.gzip is True:
         hm_out = gzip.open(loc_hm_out, 'wt')
+        hm_out_data = gzip.open(loc_hm_out_data, 'wt')
     else:
         hm_out = open(loc_hm_out, 'w')
+        hm_out_data = open(loc_hm_out_data, 'w')
+
     # Append information to header:
     header.update({'HmPOS_build': args.target_build,
                    'HmPOS_date': str(
                        datetime.date(datetime.now()))})  # ToDo Consider adding information about the ENSEMBL build?
-    hm_out.write('\n'.join(create_scoringfileheader(header)))
-    hm_out.write('\n')
 
     # Initialize harmonization tracking
     hm_Passed = True
     hm_counts = {}
+    hm_match_chr = {}
+    hm_match_pos = {}
+
     if isSameBuild:
         hm_matches = {}
         if 'chr_name' in df_scoring.columns:
@@ -295,15 +303,31 @@ def run_HmPOS(args, chunksize=100000):
                                 hm_matches['chr_name'][hm_source] += hm_count
                             else:
                                 hm_matches['chr_name'][hm_source] = hm_count
+
+                        # Count hm_match_chr trues and falses
+                        for hm_type, hm_count in dict(df_chunk['hm_match_chr'].value_counts()).items():
+                            if hm_type in hm_match_chr:
+                                hm_match_chr[hm_type] += hm_count
+                            else:
+                                hm_match_chr[hm_type] = hm_count
+
                     if 'chr_position' in df_scoring.columns:
                         df_chunk['hm_match_pos'] = np.nan
                         i_pos_notnull = (df_chunk['chr_position'].isnull() == False)
+                        df_chunk.loc[i_pos_notnull, 'hm_pos'] = [conv2int(x) for x in df_chunk.loc[i_pos_notnull, 'hm_pos']]
                         df_chunk.loc[i_pos_notnull, 'hm_match_pos'] = (df_chunk.loc[i_pos_notnull, 'chr_position'] == df_chunk.loc[i_pos_notnull, 'hm_pos'])
                         for hm_source, hm_count in dict(df_chunk['hm_match_pos'].value_counts()).items():
                             if hm_source in hm_matches['chr_name']:
                                 hm_matches['chr_position'][hm_source] += hm_count
                             else:
                                 hm_matches['chr_position'][hm_source] = hm_count
+
+                        # Count hm_match_pos trues and falses
+                        for hm_type, hm_count in dict(df_chunk['hm_match_pos'].value_counts()).items():
+                            if hm_type in hm_match_pos:
+                                hm_match_pos[hm_type] += hm_count
+                            else:
+                                hm_match_pos[hm_type] = hm_count
 
                 # Tally source of variant annotations
                 for hm_source, hm_count in dict(df_chunk['hm_source'].value_counts()).items():
@@ -312,16 +336,38 @@ def run_HmPOS(args, chunksize=100000):
                     else:
                         hm_counts[hm_source] = hm_count
                 if ic == 0:
-                    df_chunk.to_csv(hm_out, mode='a', index=False, sep='\t')  # Write output using pandas
+                    df_chunk.to_csv(hm_out_data, mode='a', index=False, sep='\t')  # Write output using pandas
                 else:
-                    df_chunk.to_csv(hm_out, mode='a', index=False, header=False, sep='\t')  # Write output using pandas
+                    df_chunk.to_csv(hm_out_data, mode='a', index=False, header=False, sep='\t')  # Write output using pandas
             except:
                 hm_Passed = False
             pbar.update(end)
         hm_Passed = 'COMPLETED'
     pbar.close()
+
     if hm_Passed == 'COMPLETED':
+        hm_out_data.close()
+        # Add header information to HmPOS file
+        if hm_match_chr:
+            header.update({'HmPOS_match_chr': hm_match_chr})
+        if hm_match_pos:
+            header.update({'HmPOS_match_pos': hm_match_pos})
+        hm_out.write('\n'.join(create_scoringfileheader(header)))
+        hm_out.write('\n')
         hm_out.close()
+
+        # Append data to HmPOS file and remove temp file
+        if args.gzip is True:
+            hm_out = gzip.open(loc_hm_out, 'at')
+            hm_out_data = gzip.open(loc_hm_out_data, 'rt')
+        else:
+            hm_out = open(loc_hm_out, 'a')
+            hm_out_data = open(loc_hm_out_data, 'r')
+        hm_out.write(hm_out_data.read())
+        hm_out.close()
+        hm_out_data.close()
+        os.remove(loc_hm_out_data)
+
         print('Mapped {} -> {}'.format(header['pgs_id'], loc_hm_out))
         print('Variant Sources: {}'.format(hm_counts))
         if hm_matches:
@@ -329,7 +375,9 @@ def run_HmPOS(args, chunksize=100000):
         return
     else:
         hm_out.close()
+        hm_out_data.close()
         os.remove(loc_hm_out)
+        os.remove(loc_hm_out_data)
         print('FAILED')
         raise HarmonizationError
         return
