@@ -187,10 +187,6 @@ class Harmonizer:
         self.cols_order = ['chr_name', 'chr_position', 'variant_id',
                            'effect_allele', 'other_allele', 'effect_weight',
                            'hm_code', 'hm_info']
-        if 'hm_match_chr' in self.cols_previous:
-            self.cols_order.append('hm_match_chr')
-        if 'hm_match_pos' in self.cols_previous:
-            self.cols_order.append('hm_match_pos')
         self.cols_extra = []
 
         # Check which other columns need to be added
@@ -225,6 +221,11 @@ class Harmonizer:
                         PassHM = True
                     else:
                         hm_info['fixedStrandFlip'] = False
+
+        # Move the content of the columns 'hm_match_chr' and 'hm_match_pos' into 'hm_info'
+        for hm_match_item in ['hm_match_chr','hm_match_pos']:
+            if hm_match_item in v:
+                hm_info[hm_match_item] = v[hm_match_item]
 
         if original_build is None:
             original_build = 'NR'
