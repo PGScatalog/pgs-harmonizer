@@ -506,10 +506,17 @@ def run_HmVCF(args):
 
         # Prepare header
         header['HmVCF_date'] = str(datetime.date(datetime.now()))
+        # Using Cohort VCF
         if usingCohortVCF is not None:
             header['HmVCF_ref'] = usingCohortVCF
+        # Using Ensembl VCF
         else:
-            header['HmVCF_ref'] = 'Ensembl Variation / dbSNP'  # ToDo Consider adding information about ENSEMBL build
+            # With Ensembl and dbSNP versions
+            if vcfs_targetbuild.ensembl_version and vcfs_targetbuild.dbsnp_version:
+                header['HmVCF_ref'] = f'Ensembl {vcfs_targetbuild.ensembl_version} / dbSNP {vcfs_targetbuild.dbsnp_version}'
+            # Without the version information
+            else:
+                header['HmVCF_ref'] = 'Ensembl / dbSNP'
         header['HmVCF_n_matched'] = df_harmonized.shape[0]
         header['HmVCF_n_unmapped'] = df_harmonized_unmapped.shape[0]
 

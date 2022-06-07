@@ -1,4 +1,5 @@
-import os
+import os, re
+import gzip
 import pandas as pd
 from cyvcf2 import VCF
 from pgs_harmonizer.harmonize import reversecomplement, chromosomes, DetermineHarmonizationCode
@@ -167,11 +168,15 @@ def vcf_lookup(chromosome, position, build, loc_vcfref='map/vcf_ref/'):
 
 
 class VCFs:
+    
     """Class to open and hold all VCF files for a genome build"""
     def __init__(self, build, loc_vcfref='map/vcf_ref/', cohort_name=None):
         self.VCF = None
         self.by_chr = {}
         self.build = build
+        self.ensembl_version = None
+        self.dbsnp_version = None
+
         if cohort_name is None:
             for chr in chromosomes:
                 loc_vcf = f'{loc_vcfref}{self.build}/homo_sapiens-chr{chr}.vcf.gz'
@@ -179,6 +184,8 @@ class VCFs:
                 if not os.path.isfile(loc_vcf):
                     loc_vcf = f'{loc_vcfref}/homo_sapiens-chr{chr}.vcf.gz'
                 self.by_chr[chr] = VCF(loc_vcf)
+                if not self.ensembl_version and not self.dbsnp_version:
+                    self.get_ref_source(loc_vcf)
         else:
             loc_vcf = '{}/{}/cohort_ref/{}.vcf.gz'.format(loc_vcfref, build, cohort_name)
             if os.path.isfile(loc_vcf):
@@ -207,5 +214,22 @@ class VCFs:
 
         return VCFResult(chromosome, position, self.build, r_lookup)
 
+
+    def get_ref_source(self,loc_vcf):
+        """ Extract the Ensembl and dbSNP versions """
+        with gzip.open(loc_vcf , 'rb') as f:
+            for f_line in f: # read file line by line
+                line = f_line.decode()
+                if line.startswith('##'):
+                    if line.startswith('##source=ensembl'):
+                        line_content = re.search(r'version=(\d+);', line).group(1)
+                        self.ensembl_version = line_content
+                    elif line.startswith('##INFO=<ID=dbSNP'):
+                        line_content = re.search(r'dbSNP_(\d+),', line).group(1)
+                        self.dbsnp_version = line_content
+                else:
+                    break
+        if not self.ensembl_version or not self.dbsnp_version:
+            print(f"ERROR: can't find the Ensembl and/or dbSNP version in the VCF file '{loc_vcf}'!")
 
 # def guess_build(loc_file, vcf_root):
