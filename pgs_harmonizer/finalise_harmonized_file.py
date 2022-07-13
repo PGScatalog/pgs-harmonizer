@@ -95,7 +95,7 @@ class FinaliseHarmonizedScoringFiles:
                     line = f_line.decode()
                     # Update header
                     if line.startswith('#'):
-                        if line.startswith('## HARMONIZATION DETAILS') and self.version:
+                        if line.startswith('##HARMONIZATION DETAILS') and self.version:
                             line += f'#Hm_file_version={self.version}\n'
                         elif line.startswith('#HmPOS_date') or line.startswith('#HmPOS_match_'):
                             line = ''

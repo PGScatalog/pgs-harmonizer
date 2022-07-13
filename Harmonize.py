@@ -135,6 +135,11 @@ def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOthe
         if hm_rsID != '':
             hm_rsID = ''  # Reset if it's a failed rsID mapping
 
+    if hm_chr in [None,np.nan,'nan']:
+        hm_chr = ''
+    if hm_pos in [None,np.nan,'nan'] :
+        hm_pos = ''
+
     if all([x == '' for x in [hm_chr, hm_pos]]):
         hm_source = 'Unknown'
 

@@ -17,7 +17,8 @@ process get_pgs_ids_list {
     --num_from $from_id \
     --num_to $to_id \
     --output $params.pgs_ids_file \
-    --rest_server $params.rest_api_url
+    --rest_server $params.rest_api_url \
+    --loc_files $params.loc_files
   """
 }
 

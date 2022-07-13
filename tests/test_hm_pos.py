@@ -35,7 +35,7 @@ class TestHmPOS(unittest.TestCase):
     hm_date = '#HmPOS_date'
 
     header = [
-        '## HARMONIZATION DETAILS',
+        '##HARMONIZATION DETAILS',
         '#HmPOS_build',
         hm_date,
         '#HmPOS_match_chr',

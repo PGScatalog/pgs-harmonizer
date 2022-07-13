@@ -8,6 +8,12 @@ map_release = {
     'GRCh38' : 'hg38'
 } # ENSEMBL -> UCSC
 
+chromosomes = ['1', '2', '3', '4', '5', '6', '7', '8',
+               '9', '10', '11', '12', '13', '14', '15', '16',
+               '17', '18', '19', '20', '21', '22',
+               'X', 'x', 'Y', 'y', 'XY', 'xy', 'MT', 'Mt', 'mt']
+
+
 class liftover:
     def __init__(self, build_from, build_to):
         # Source Genome Build
@@ -47,6 +53,9 @@ class liftover:
             if len(lifted) == 1:
                 return lifted[0][0][3:], int(lifted[0][1]), False  # Only 1 position
             if len(lifted) > 1:
+                for i in lifted:
+                    if lifted[i][0][3:] in chromosomes:
+                        return lifted[i][0][3:], int(lifted[0][1]), True # Multiple positions (take the first with standard chromosome)
                 return lifted[0][0][3:], int(lifted[0][1]), True  # Multiple positions (take first)
             else:
                 return None, None, None
