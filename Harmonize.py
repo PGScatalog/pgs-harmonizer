@@ -402,7 +402,7 @@ def variant_HmVCF(v, vcfs_targetbuild, CohortVCF=None, returnOtherAllele=True):
         if pd.isnull(v['hm_inferOtherAllele']) is False:
             hm_inferOtherAllele = v['hm_inferOtherAllele']
 
-    # Check/select allales
+    # Check/select alleles
     if pd.isnull(v['hm_source']) is False:
         v_records = vcfs_targetbuild.vcf_lookup(chromosome=v['hm_chr'], position=v['hm_pos'], rsid=v['hm_rsID'])
         if CohortVCF is not None:
