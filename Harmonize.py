@@ -1,4 +1,5 @@
 import argparse, os, sys, gzip
+from cmath import e
 from tqdm import tqdm
 from pgs_harmonizer.harmonize import *
 from datetime import datetime
@@ -311,10 +312,15 @@ def run_HmPOS(args, chunksize=100000):
 
                         # Count hm_match_chr trues and falses
                         for hm_type, hm_count in dict(df_chunk['hm_match_chr'].value_counts()).items():
-                            if hm_type in hm_match_chr:
-                                hm_match_chr[hm_type] += hm_count
+                            hm_type_str = str(hm_type)
+                            if hm_type_str in hm_match_chr:
+                                hm_match_chr[hm_type_str] += hm_count
                             else:
-                                hm_match_chr[hm_type] = hm_count
+                                hm_match_chr[hm_type_str] = hm_count
+                        if hm_match_chr:
+                            for type in ['True','False']:
+                                if type not in hm_match_chr.keys():
+                                    hm_match_chr[type] = 0
 
                     if 'chr_position' in df_scoring.columns:
                         df_chunk['hm_match_pos'] = np.nan
@@ -329,10 +335,15 @@ def run_HmPOS(args, chunksize=100000):
 
                         # Count hm_match_pos trues and falses
                         for hm_type, hm_count in dict(df_chunk['hm_match_pos'].value_counts()).items():
-                            if hm_type in hm_match_pos:
-                                hm_match_pos[hm_type] += hm_count
+                            hm_type_str = str(hm_type)
+                            if hm_type_str in hm_match_pos:
+                                hm_match_pos[hm_type_str] += hm_count
                             else:
-                                hm_match_pos[hm_type] = hm_count
+                                hm_match_pos[hm_type_str] = hm_count
+                        if hm_match_pos:
+                            for type in ['True','False']:
+                                if type not in hm_match_pos.keys():
+                                    hm_match_pos[type] = 0
 
                 # Tally source of variant annotations
                 for hm_source, hm_count in dict(df_chunk['hm_source'].value_counts()).items():

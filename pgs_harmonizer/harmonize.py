@@ -159,8 +159,9 @@ def FixStrandFlips(df):
     if 'other_allele' in df.columns:
         df['hm_reported_other_allele'] = np.nan
         df.loc[df['hm_code'] == -4, 'hm_reported_other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele']
-        df.loc[df['hm_code'] == -4, 'other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele'].apply(reversecomplement)
-
+        other_allele = df['other_allele'].iloc[0]
+        if other_allele not in [None,np.nan,'nan','']:
+            df.loc[df['hm_code'] == -4, 'other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele'].apply(reversecomplement)
     df.loc[df['hm_code'] == -4, 'hm_fixedStrandFlip'] = True
     return df
 
@@ -228,7 +229,8 @@ class Harmonizer:
 
         for hm_match_item in ['hm_match_chr','hm_match_pos']:
             if hm_match_item in v:
-                hm_info[hm_match_item] = v[hm_match_item]
+                if v[hm_match_item] not in [None,np.nan,'nan','']:
+                    hm_info[hm_match_item] = v[hm_match_item]
 
         if original_build is None:
             original_build = 'NR'
