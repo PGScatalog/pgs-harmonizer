@@ -36,7 +36,7 @@ class TestHmVCF(unittest.TestCase):
     hm_date = '#HmVCF_date'
 
     header = [
-        '## HARMONIZATION DETAILS',
+        '##HARMONIZATION DETAILS',
         hm_build_header,
         '#HmPOS_date',
         '#HmPOS_match_chr',

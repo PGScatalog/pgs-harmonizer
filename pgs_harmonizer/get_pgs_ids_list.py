@@ -1,3 +1,4 @@
+import os.path
 import requests
 import argparse
 
@@ -33,6 +34,7 @@ def main():
     argparser.add_argument("--num_to", help='Numeric ID ending the rangee', required=True, metavar='TO')
     argparser.add_argument("--output", help='Output file', required=True, metavar='OUT')
     argparser.add_argument("--rest_server", help='URL to REST API server', required=True, metavar='REST')
+    argparser.add_argument("--loc_files", help='Root directory where the PGS Scoring files are located', required=True, metavar='FILES')
 
     args = argparser.parse_args()
 
@@ -40,7 +42,11 @@ def main():
 
     output_file = open(args.output,'w')
     for pgs_id in pgs_ids_list:
-        output_file.write(f"{pgs_id}\n")
+        pgs_path = f'{args.loc_files}/{pgs_id}.txt.gz'
+        if os.path.isfile(f'{args.loc_files}/{pgs_id}.txt.gz'):
+            output_file.write(f"{pgs_id}\n")
+        else:
+            print(f'> Scoring file for {pgs_id} is missing ({pgs_path})')
     output_file.close()
 
 if __name__ == '__main__':

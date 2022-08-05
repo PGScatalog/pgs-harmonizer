@@ -1,4 +1,4 @@
-import argparse, os, sys, gzip
+import argparse, os, sys, gzip, json
 from tqdm import tqdm
 from pgs_harmonizer.harmonize import *
 from datetime import datetime
@@ -134,6 +134,11 @@ def variant_HmPOS(v, rsIDmaps=None, liftchain=None, isSameBuild=False, inferOthe
         # If it's a failed rsID mapping
         if hm_rsID != '':
             hm_rsID = ''  # Reset if it's a failed rsID mapping
+
+    if hm_chr in [None,np.nan,'nan']:
+        hm_chr = ''
+    if hm_pos in [None,np.nan,'nan'] :
+        hm_pos = ''
 
     if all([x == '' for x in [hm_chr, hm_pos]]):
         hm_source = 'Unknown'
@@ -300,16 +305,22 @@ def run_HmPOS(args, chunksize=100000):
 
                         for hm_source, hm_count in dict(df_chunk['hm_match_chr'].value_counts()).items():
                             if hm_source in hm_matches['chr_name']:
-                                hm_matches['chr_name'][hm_source] += hm_count
+                                hm_matches['chr_name'][hm_source] += int(hm_count)
                             else:
                                 hm_matches['chr_name'][hm_source] = hm_count
 
                         # Count hm_match_chr trues and falses
                         for hm_type, hm_count in dict(df_chunk['hm_match_chr'].value_counts()).items():
-                            if hm_type in hm_match_chr:
-                                hm_match_chr[hm_type] += hm_count
+                            hm_type_str = str(hm_type)
+                            hm_count_int = int(hm_count)
+                            if hm_type_str in hm_match_chr:
+                                hm_match_chr[hm_type_str] += hm_count_int
                             else:
-                                hm_match_chr[hm_type] = hm_count
+                                hm_match_chr[hm_type_str] = hm_count_int
+                        if hm_match_chr:
+                            for type in ['True','False']:
+                                if type not in hm_match_chr.keys():
+                                    hm_match_chr[type] = 0
 
                     if 'chr_position' in df_scoring.columns:
                         df_chunk['hm_match_pos'] = np.nan
@@ -324,10 +335,16 @@ def run_HmPOS(args, chunksize=100000):
 
                         # Count hm_match_pos trues and falses
                         for hm_type, hm_count in dict(df_chunk['hm_match_pos'].value_counts()).items():
-                            if hm_type in hm_match_pos:
-                                hm_match_pos[hm_type] += hm_count
+                            hm_type_str = str(hm_type)
+                            hm_count_int = int(hm_count)
+                            if hm_type_str in hm_match_pos:
+                                hm_match_pos[hm_type_str] += hm_count_int
                             else:
-                                hm_match_pos[hm_type] = hm_count
+                                hm_match_pos[hm_type_str] = hm_count_int
+                        if hm_match_pos:
+                            for type in ['True','False']:
+                                if type not in hm_match_pos.keys():
+                                    hm_match_pos[type] = 0
 
                 # Tally source of variant annotations
                 for hm_source, hm_count in dict(df_chunk['hm_source'].value_counts()).items():
@@ -349,9 +366,9 @@ def run_HmPOS(args, chunksize=100000):
         hm_out_data.close()
         # Add header information to HmPOS file
         if hm_match_chr:
-            header.update({'HmPOS_match_chr': hm_match_chr})
+            header.update({'HmPOS_match_chr': json.dumps(hm_match_chr)})
         if hm_match_pos:
-            header.update({'HmPOS_match_pos': hm_match_pos})
+            header.update({'HmPOS_match_pos': json.dumps(hm_match_pos)})
         hm_out.write('\n'.join(create_scoringfileheader(header)))
         hm_out.write('\n')
         hm_out.close()

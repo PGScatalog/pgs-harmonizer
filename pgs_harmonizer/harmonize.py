@@ -108,7 +108,7 @@ def create_scoringfileheader(h, skipfields=[]):
     # Add Harmonization Details
     if 'HmPOS_build' in h:
         # Add HmPOS details
-        lines += ['## HARMONIZATION DETAILS',
+        lines += ['##HARMONIZATION DETAILS',
                   '#HmPOS_build={}'.format(h['HmPOS_build']),
                   '#HmPOS_date={}'.format(h['HmPOS_date'])
                   ]
@@ -159,8 +159,9 @@ def FixStrandFlips(df):
     if 'other_allele' in df.columns:
         df['hm_reported_other_allele'] = np.nan
         df.loc[df['hm_code'] == -4, 'hm_reported_other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele']
-        df.loc[df['hm_code'] == -4, 'other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele'].apply(reversecomplement)
-
+        other_allele = df['other_allele'].iloc[0]
+        if other_allele not in [None,np.nan,'nan','']:
+            df.loc[df['hm_code'] == -4, 'other_allele'] = df.loc[df['hm_code'] == -4, 'other_allele'].apply(reversecomplement)
     df.loc[df['hm_code'] == -4, 'hm_fixedStrandFlip'] = True
     return df
 
@@ -187,6 +188,10 @@ class Harmonizer:
         self.cols_order = ['chr_name', 'chr_position', 'variant_id',
                            'effect_allele', 'other_allele', 'effect_weight',
                            'hm_code', 'hm_info']
+        # if 'hm_match_chr' in self.cols_previous:
+        #     self.cols_order.append('hm_match_chr')
+        # if 'hm_match_pos' in self.cols_previous:
+        #     self.cols_order.append('hm_match_pos')
         self.cols_extra = []
 
         # Check which other columns need to be added
@@ -222,10 +227,10 @@ class Harmonizer:
                     else:
                         hm_info['fixedStrandFlip'] = False
 
-        # Move the content of the columns 'hm_match_chr' and 'hm_match_pos' into 'hm_info'
         for hm_match_item in ['hm_match_chr','hm_match_pos']:
             if hm_match_item in v:
-                hm_info[hm_match_item] = v[hm_match_item]
+                if v[hm_match_item] not in [None,np.nan,'nan','']:
+                    hm_info[hm_match_item] = v[hm_match_item]
 
         if original_build is None:
             original_build = 'NR'
@@ -290,6 +295,8 @@ class Harmonizer:
                 elif colname == 'chr_position':
                     if pd.isnull(v['hm_pos']) is False:
                         hm_info['hm_pos'] = v['hm_pos']
+                    else:
+                        hm_info['hm_pos'] = ''
                 elif colname == 'variant_id':
                     if pd.isnull(v['hm_vid']) is False:
                         hm_info['variant_id'] = v['hm_vid']
