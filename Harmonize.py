@@ -270,15 +270,7 @@ def run_HmPOS(args, chunksize=100000):
     hm_counts = {}
     hm_match_chr = {}
     hm_match_pos = {}
-
-    if isSameBuild:
-        hm_matches = {}
-        if 'chr_name' in df_scoring.columns:
-            hm_matches['chr_name'] = {True: 0, False: 0}
-        if 'chr_position' in df_scoring.columns:
-            hm_matches['chr_position'] = {True: 0, False: 0}
-    else:
-        hm_matches = None
+    hm_match_types = ['True','False']
 
     # Start loop through scoring file
     hm_chunks = int(np.ceil(df_scoring.shape[0] / chunksize))
@@ -303,12 +295,6 @@ def run_HmPOS(args, chunksize=100000):
                         i_chr_notnull = (df_chunk['chr_name'].isnull() == False)
                         df_chunk.loc[i_chr_notnull, 'hm_match_chr'] = (df_chunk.loc[i_chr_notnull, 'chr_name'] == df_chunk.loc[i_chr_notnull, 'hm_chr'])
 
-                        for hm_source, hm_count in dict(df_chunk['hm_match_chr'].value_counts()).items():
-                            if hm_source in hm_matches['chr_name']:
-                                hm_matches['chr_name'][hm_source] += int(hm_count)
-                            else:
-                                hm_matches['chr_name'][hm_source] = hm_count
-
                         # Count hm_match_chr trues and falses
                         for hm_type, hm_count in dict(df_chunk['hm_match_chr'].value_counts()).items():
                             hm_type_str = str(hm_type)
@@ -318,20 +304,18 @@ def run_HmPOS(args, chunksize=100000):
                             else:
                                 hm_match_chr[hm_type_str] = hm_count_int
                         if hm_match_chr:
-                            for type in ['True','False']:
+                            for type in hm_match_types:
                                 if type not in hm_match_chr.keys():
                                     hm_match_chr[type] = 0
+                        else:
+                            for type in hm_match_types:
+                                hm_match_chr[type] = None
 
                     if 'chr_position' in df_scoring.columns:
                         df_chunk['hm_match_pos'] = np.nan
                         i_pos_notnull = (df_chunk['chr_position'].isnull() == False)
                         df_chunk.loc[i_pos_notnull, 'hm_pos'] = [conv2int(x) for x in df_chunk.loc[i_pos_notnull, 'hm_pos']]
                         df_chunk.loc[i_pos_notnull, 'hm_match_pos'] = (df_chunk.loc[i_pos_notnull, 'chr_position'] == df_chunk.loc[i_pos_notnull, 'hm_pos'])
-                        for hm_source, hm_count in dict(df_chunk['hm_match_pos'].value_counts()).items():
-                            if hm_source in hm_matches['chr_name']:
-                                hm_matches['chr_position'][hm_source] += hm_count
-                            else:
-                                hm_matches['chr_position'][hm_source] = hm_count
 
                         # Count hm_match_pos trues and falses
                         for hm_type, hm_count in dict(df_chunk['hm_match_pos'].value_counts()).items():
@@ -342,9 +326,16 @@ def run_HmPOS(args, chunksize=100000):
                             else:
                                 hm_match_pos[hm_type_str] = hm_count_int
                         if hm_match_pos:
-                            for type in ['True','False']:
+                            for type in hm_match_types:
                                 if type not in hm_match_pos.keys():
                                     hm_match_pos[type] = 0
+                        else:
+                            for type in hm_match_types:
+                                hm_match_pos[type] = None
+                else:
+                    for type in hm_match_types:
+                        hm_match_chr[type] = None
+                        hm_match_pos[type] = None
 
                 # Tally source of variant annotations
                 for hm_source, hm_count in dict(df_chunk['hm_source'].value_counts()).items():
@@ -387,8 +378,8 @@ def run_HmPOS(args, chunksize=100000):
 
         print('Mapped {} -> {}'.format(header['pgs_id'], loc_hm_out))
         print('Variant Sources: {}'.format(hm_counts))
-        if hm_matches:
-            print('Comparison of rsID vs. author-reported positions: {}'.format(hm_matches))
+        if hm_match_chr or hm_match_pos:
+            print('Comparison of rsID vs. author-reported positions: CHR: {}, POS: {}'.format(hm_match_chr,hm_match_pos))
         return
     else:
         hm_out.close()

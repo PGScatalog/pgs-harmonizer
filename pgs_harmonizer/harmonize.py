@@ -95,7 +95,10 @@ def create_scoringfileheader(h, skipfields=[]):
         lines.append('##POLYGENIC SCORE (PGS) INFORMATION')
         for f in fields_info:
             if f in h:
-                lines.append(f'#{f}={h[f]}')
+                header_val = h[f]
+                if header_val == None:
+                    header_val = 'NR'
+                lines.append(f'#{f}={header_val}')
 
     # Source Information
     fields_source = ['pgp_id', 'citation', 'license']
