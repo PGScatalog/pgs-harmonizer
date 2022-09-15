@@ -3,7 +3,7 @@ A pipeline to format and harmonize [Polygenic Score (PGS) Catalog Scoring Files]
 within and between different genome builds. 
 
 _External users NB: the pipeline will run very slowly if only rsIDs are given, because it looks up each rsID in 200 
-variant batches using the Ensembl API. There are ways to speed this up by looking up the total set of rsIDs once using the [pgs_variants_coords](https://github.com/PGScatalog/pgs_variants_coords) tool which uses Ensembl VCF files. _
+variant batches using the Ensembl API. There are ways to speed this up by looking up the total set of rsIDs once using the [pgs_variants_coords](https://github.com/PGScatalog/pgs_variants_coords) tool which uses Ensembl VCF files._
 
 ---
 
@@ -36,7 +36,7 @@ optional arguments:
   -h, --help     show this help message and exit
 ```
 
-* HmPOS
+* HmPOS option
 ```
 python ./Harmonize.py HmPOS -h
 usage: Harmonize.py HmPOS [-h] [-loc_files DIR] [-source_build GENOMEBUILD] 
@@ -69,7 +69,7 @@ options:
 ```
 
 
-* HmVCF:
+* HmVCF option
 ```
 python ./Harmonize.py HmVCF -h
 usage: Harmonize.py HmVCF [-h] [-loc_files DIR] [-loc_hmoutput DIR] 
@@ -153,7 +153,7 @@ This pipeline take a list of PGS IDs and run them in parallel.
 It generates, for the given genome build:
  * 1 Harmonized Position file
  * 1 Harmonized VCF file
- * 1 Finalized file: it updates the metadata, change the file name and store information in the SQLite Knowledge Base 
+ * 1 Harmonized "Final" file: starting from the HmVCF file it updates the metadata, change the file name and store information in the SQLite Knowledge Base.
 
 #### Nextflow pipeline configuration (nextflow_list.config)
 ```groovy
