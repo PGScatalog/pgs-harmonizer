@@ -33,12 +33,12 @@ process HmPOS {
 
     script:
     """
-    python $params.loc_scripts/Harmonize.py HmPOS -loc_files $params.loc_files -loc_hmoutput $params.loc_hmoutput -var2location $params.loc_var2location --gzip $pgs_id $params.genebuild_grc
+    python $params.loc_scripts/Harmonize.py HmPOS -loc_files $params.loc_files -loc_hmoutput $params.loc_hmoutput -var2location $params.loc_var2location --gzip $pgs_id $params.genomebuild_grc
     """
 }
 
 process HmVCF {
-    label 'retry_increasing_mem'
+    label 'retry_increasing_big_mem'
     input:
       val pgs_id
 
@@ -47,7 +47,7 @@ process HmVCF {
 
     script:
     """
-    python $params.loc_scripts/Harmonize.py HmVCF -loc_files $params.loc_hmoutput -loc_hmoutput $params.loc_hmoutput_vcf -loc_vcfs $params.loc_vcfs --gzip $pgs_id $params.genebuild_grc
+    python $params.loc_scripts/Harmonize.py HmVCF -loc_files $params.loc_hmoutput -loc_hmoutput $params.loc_hmoutput_vcf -loc_vcfs $params.loc_vcfs --gzip $pgs_id $params.genomebuild_grc
     """
 }
 
@@ -58,7 +58,7 @@ process Finalise {
 
     script:
     """
-    python $params.loc_scripts/pgs_harmonizer/finalise_harmonized_file.py --score_id $pgs_id --input_dir $params.loc_hmoutput --staged_dir $params.loc_staged --genebuild $params.genebuild --sqlite_file $params.hm_version_sqlite_file_path
+    python $params.loc_scripts/pgs_harmonizer/finalise_harmonized_file.py --score_id $pgs_id --input_dir $params.loc_hmoutput --staged_dir $params.loc_staged --genomebuild $params.genomebuild --sqlite_file $params.hm_version_sqlite_file_path
     """
 }
 

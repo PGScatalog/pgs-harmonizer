@@ -15,7 +15,7 @@ class FinaliseHarmonizedScoringFiles:
         ('#HmVCF_n_unmapped','#Hm_variants_number_unmapped')
     ]
 
-    def __init__(self, score_id, hmvcf_dir, staged_dir, genebuild, sqlite_file):
+    def __init__(self, score_id, hmvcf_dir, staged_dir, genomebuild, sqlite_file):
 
         if not os.path.exists(hmvcf_dir):
             print(f'Error: The path to the HmVCF directory can\'t be found ({hmvcf_dir}).')
@@ -30,7 +30,7 @@ class FinaliseHarmonizedScoringFiles:
         self.score_id = score_id
         self.hmvcf_dir = hmvcf_dir
         self.staged_dir = staged_dir
-        self.genebuild = genebuild
+        self.genomebuild = genomebuild
         self.sqlite_file = sqlite_file
 
 
@@ -59,7 +59,7 @@ class FinaliseHarmonizedScoringFiles:
         sqlite_connection = sqlite3.connect(self.sqlite_file)
         sqlite_cursor = sqlite_connection.cursor()
         sql_query = f'SELECT max(version) from harmonization_version_control WHERE pgs_id=? and genebuild=?;'
-        sqlite_cursor.execute(sql_query,[self.score_id,self.genebuild])
+        sqlite_cursor.execute(sql_query,[self.score_id,self.genomebuild])
         sqlite_result = sqlite_cursor.fetchone()
         
         if len(sqlite_result):
@@ -68,20 +68,20 @@ class FinaliseHarmonizedScoringFiles:
                 comment = 'Updated version of the harmonized file'
 
         # Build file names
-        self.harmonized_filename = f'{self.hmvcf_dir}/{self.score_id}_hmVCF_GRCh{self.genebuild}.txt.gz'
-        self.staged_filename = f'{self.staged_dir}/{self.score_id}_h{self.genebuild}_v{self.version}.txt.gz'
+        self.harmonized_filename = f'{self.hmvcf_dir}/{self.score_id}_hmVCF_GRCh{self.genomebuild}.txt.gz'
+        self.staged_filename = f'{self.staged_dir}/{self.score_id}_h{self.genomebuild}_v{self.version}.txt.gz'
 
         # Get header information
         self.get_header_information()
 
         try:
             sql_query2 = 'INSERT INTO harmonization_version_control (pgs_id,version,genebuild,date,source,variant_number,matched_number,unmapped_number,comment) VALUES (?,?,?,?,?,?,?,?,?);'
-            sqlite_cursor.execute(sql_query2,[self.score_id,self.version,self.genebuild,creation_date,self.source,self.variant_number,self.matched_number,self.unmapped_number,comment])
+            sqlite_cursor.execute(sql_query2,[self.score_id,self.version,self.genomebuild,creation_date,self.source,self.variant_number,self.matched_number,self.unmapped_number,comment])
             sqlite_connection.commit()
             sqlite_cursor.close()
             sqlite_connection.close()
         except sqlite3.Error as e:
-            print(f"Failed to insert record of {self.score_id} [{self.genebuild}] into sqlite table: {e}")
+            print(f"Failed to insert record of {self.score_id} [{self.genomebuild}] into sqlite table: {e}")
             exit(1)   
 
 
@@ -128,12 +128,12 @@ def main():
     argparser.add_argument("--score_id", help='List of scores IDs', required=True, metavar='PGS_IDS')
     argparser.add_argument("--input_dir", help='Directory hosting the harmonized scoring files', required=True, metavar='VCF_DIR')
     argparser.add_argument("--staged_dir", help='Path to the variants output file', required=True, metavar='STG_DIR')
-    argparser.add_argument("--genebuild", help='Directory hosting the scoring files', required=True, metavar='GENEBUILD')
+    argparser.add_argument("--genomebuild", help='Directory hosting the scoring files', required=True, metavar='GENOMEBUILD')
     argparser.add_argument("--sqlite_file", help='Path to the SQLlite file containing the variants with coordinates already assigned', required=True, metavar='SQLITE_FILE')
 
     args = argparser.parse_args()
 
-    finalise_harmonized_file = FinaliseHarmonizedScoringFiles(args.score_id,args.input_dir,args.staged_dir,args.genebuild,args.sqlite_file)
+    finalise_harmonized_file = FinaliseHarmonizedScoringFiles(args.score_id,args.input_dir,args.staged_dir,args.genomebuild,args.sqlite_file)
     finalise_harmonized_file.create_entry_in_knowledge_base()
     finalise_harmonized_file.update_header_comments()
 
