@@ -10,9 +10,10 @@ variant batches using the Ensembl API. There are ways to speed this up by lookin
 
 ## Requirements
 * Python packages: requests, pandas, pyliftover, tqdm, cyvcf2
+  ```pip install requirements.txt```
 * PGS Catalog rsID -> position mappings (see [pgs_variants_coords](https://github.com/PGScatalog/pgs_variants_coords) to generate the variants position knowledge base).
 * VCFs from Ensembl (in `/map/vcf_ref/`) or a specific cohort (in `/map/cohort_ref/`). Ensembl VCFs can be downloaded 
-by running the `DownloadMappings.py` script in the project directory.
+by running the `DownloadMappings.py` script in the project directory - **only needed for the  Harmonize HmVCF script and the pipelines**.
 
 
 ## Run single script
@@ -112,22 +113,22 @@ options:
 ```
 
 ### Examples
-To test that the pipeline can run try these commands on the test data in the project directory:
+To test that the pipeline can run try these commands on the `tests/data` in the project directory:
     
     # PGS000015
     ## GRCh37
-    python Harmonize.py HmPOS PGS000015 GRCh37 -loc_files ./test_data/ --gzip
+    python Harmonize.py HmPOS PGS000015 GRCh37 -loc_files ./tests/data/ --gzip
     python Harmonize.py HmVCF PGS000015 GRCh37 --gzip
     ## GRCh38
-    python Harmonize.py HmPOS PGS000015 GRCh38 -loc_files ./test_data/ --gzip
+    python Harmonize.py HmPOS PGS000015 GRCh38 -loc_files ./tests/data/ --gzip
     python Harmonize.py HmVCF PGS000015 GRCh38 --gzip
     
     # PGS000065
     ## GRCh37
-    python Harmonize.py HmPOS PGS000065 GRCh37 -loc_files ./test_data/ --gzip
+    python Harmonize.py HmPOS PGS000065 GRCh37 -loc_files ./tests/data/ --gzip
     python Harmonize.py HmVCF PGS000065 GRCh37 --gzip
     ## GRCh38
-    python Harmonize.py HmPOS PGS000065 GRCh38 -loc_files ./test_data/ --gzip
+    python Harmonize.py HmPOS PGS000065 GRCh38 -loc_files ./tests/data/ --gzip
     python Harmonize.py HmVCF PGS000065 GRCh38 --gzip
    
 
@@ -139,7 +140,7 @@ The pipeline generates the HmPOS, HmVCF and the finalised version of each Scorin
 
 There are additional requirements to run **pgs-harmonizer** as a pipeline:
 * [Nextflow](https://www.nextflow.io/docs/latest/getstarted.html#installation)
-* [SQLite](https://www.sqlite.org/index.html): You will need to generate a SQLite PGS Harmonized Knowledge Base (or use an existing one).
+* [SQLite](https://www.sqlite.org/index.html): The pipeline generates a SQLite PGS Harmonized Knowledge Base (or populate an existing one).
 
 Example of command to create a new Knowledge Base:
 ```

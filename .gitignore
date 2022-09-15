@@ -1,1 +1,3 @@
 nextflow.config
+**/__pycache__/
+tests/data/hm*
