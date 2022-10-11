@@ -50,7 +50,7 @@ parser_VCF.add_argument("-loc_files", dest="loc_scorefiles",
                         metavar="DIR",
                         default='./PGS_HmPOS/', required=False)
 parser_VCF.add_argument("-loc_hmoutput", dest="loc_outputs",
-                        help="Directory where the harmonization output will be saved (default: PGS_HmPOS/)",
+                        help="Directory where the harmonization output will be saved (default: PGS_HmVCF/)",
                         metavar="DIR",
                         default='./PGS_HmVCF/', required=False)
 parser_VCF.add_argument(dest="target_build",
