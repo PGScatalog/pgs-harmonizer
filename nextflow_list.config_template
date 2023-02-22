@@ -1,18 +1,15 @@
-gb_version = <target genome build - numeric version, e.g. '38'>
 root_dir = <path to the working directory (other than Nextflow's)>
 
 params {
     pgs = <list of PGS IDs to harmonize, e.g. ['PGS000020','PGS000140']>
-    genomebuild_grch = "GRCh$gb_version" <target genome build - string version, e.g. 'GRCh38'>
-    genomebuild = "$gb_version" <target genome build - numeric version, e.g. '38'>
     pgs_ids_file = <name of the locally generated PGS IDs list file, e.g. "pgs_ids.txt">
     rest_api_url = <URL to the REST API server>
     loc_scripts = <path to the pgs-harmonizer directory, e.g. /Users/my_account/pgs-harmonizer/ (absolute) or ../../../ (relative)>
     loc_files = <path to the Scoring files directory>
-    loc_hmoutput = <path to the HmPOS output directory, e.g. "$root_dir/HmPOS/$gb_version/">
-    loc_hmoutput_vcf = <path to the HmVCF output directory, e.g. "$root_dir/HmVCF/$gb_version/">
+    loc_hmoutput = <path to the HmPOS output directory, e.g. "$root_dir/HmPOS">
+    loc_hmoutput_vcf = <path to the HmVCF output directory, e.g. "$root_dir/HmVCF">
     loc_var2location = <path to the directory containing the variant coordinates Knowledge Bases>
     loc_vcfs = <path to the Ensembl VCFs - optional if they are located in 'map/vcf_ref/'>
-    loc_staged = <path to the directory containing the final version of the harmonized files, e.g. "$root_dir/HmFinal/$gb_version/">
+    loc_staged = <path to the directory containing the final version of the harmonized files, e.g. "$root_dir/HmFinal">
     hm_version_sqlite_file_path = <path to the Harmonization Knowledge Base, e.g. 'pgs_harmonizated_kb.db'>
 }
