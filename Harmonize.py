@@ -1,4 +1,4 @@
-import argparse, os, sys, gzip, json
+import argparse, os, sys, gzip, json, stat
 from tqdm import tqdm
 from pgs_harmonizer.harmonize import *
 from datetime import datetime
@@ -375,6 +375,7 @@ def run_HmPOS(args, chunksize=100000):
         hm_out.close()
         hm_out_data.close()
         os.remove(loc_hm_out_data)
+        change_file_write_acces(loc_hm_out)
 
         print('Mapped {} -> {}'.format(header['pgs_id'], loc_hm_out))
         print('Variant Sources: {}'.format(hm_counts))
@@ -630,6 +631,15 @@ def run_HmVCF(args):
         print('FAILED')
         raise HarmonizationError
         return
+
+
+def change_file_write_acces(filename):
+    # Change chmod to allow group write access
+    if os.path.isfile(filename):
+        try:
+            os.chmod(filename, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IWGRP|stat.S_IROTH)
+        except:
+            print(f">>>>> ERROR! Can't change the read/write access of the file '{filename}'!")
 
 
 if __name__ == "__main__":
