@@ -332,10 +332,10 @@ def run_HmPOS(args, chunksize=100000):
                         else:
                             for type in hm_match_types:
                                 hm_match_pos[type] = None
-                else:
-                    for type in hm_match_types:
-                        hm_match_chr[type] = None
-                        hm_match_pos[type] = None
+                # else:
+                #     for type in hm_match_types:
+                #         hm_match_chr[type] = None
+                #         hm_match_pos[type] = None
 
                 # Tally source of variant annotations
                 for hm_source, hm_count in dict(df_chunk['hm_source'].value_counts()).items():
@@ -356,10 +356,15 @@ def run_HmPOS(args, chunksize=100000):
     if hm_Passed == 'COMPLETED':
         hm_out_data.close()
         # Add header information to HmPOS file
-        if hm_match_chr:
-            header.update({'HmPOS_match_chr': json.dumps(hm_match_chr)})
-        if hm_match_pos:
-            header.update({'HmPOS_match_pos': json.dumps(hm_match_pos)})
+        if not hm_match_chr:
+            for type in hm_match_types:
+                hm_match_chr[type] = None
+        header.update({'HmPOS_match_chr': json.dumps(hm_match_chr)})
+        if not hm_match_pos:
+            for type in hm_match_types:
+                hm_match_pos[type] = None
+        header.update({'HmPOS_match_pos': json.dumps(hm_match_pos)})
+        # Write header
         hm_out.write('\n'.join(create_scoringfileheader(header)))
         hm_out.write('\n')
         hm_out.close()
