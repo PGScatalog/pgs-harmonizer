@@ -175,37 +175,47 @@ def clean_rsIDs(raw_rslist):
                         cln_rslist.add(i)
     return(list(cln_rslist))
 
-def parse_var2location(loc_var2location_db, rsIDs = None, catchAPI=True):
+def parse_var2location(loc_var2location_db, rsIDs=None, catchAPI=True):
     """Reads results of var2location DB into the same class as the ENSEMBL API results"""
     results = {}
 
     sqlite_connection = sqlite3.connect(loc_var2location_db)
-
-    # Too Slow
-    # if type(rsIDs) == list:
-    #     print('reading filtered')
-    #     var2location = pd.read_sql_query("SELECT * FROM variant_coords WHERE varname IN {}".format(tuple(rsIDs)),
-    #                                      sqlite_connection)
-    # else:
-    #     print('reading all')
-    #     var2location = pd.read_sql_query("SELECT * FROM variant_coords", sqlite_connection)
-    #
-    # var2location.columns = ['query_rsid', 'current_rsid', 'seq_region_name', 'start', 'end', 'allele_string']
-    #
-    # print('Looping')
-    # for query_rsid, maps in var2location.groupby('query_rsid'):
-    #     mapped_ids = list(set(maps['current_rsid']))
-    #     if len(mapped_ids) == 1:
-    #         results[query_rsid] = VariationResult(mapped_ids[0], {'name': mapped_ids[0],
-    #                                                      'mappings': maps[['seq_region_name', 'start', 'end', 'allele_string']].to_dict('records')})
-    #     else:
-    #         print('WARNING')
-
     sqlite_cursor = sqlite_connection.cursor()
+
+    use_temp_table = False
     if type(rsIDs) == list:
-        qcursor = sqlite_cursor.execute("SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles FROM variant vlist LEFT JOIN variant_coords vc ON vlist.current_varname = vc.current_varname WHERE vlist.varname IN {}".format(tuple(rsIDs)))
+        if(len(rsIDs) > 100000):
+            # Load rsIDs into a temp table instead of building a potentially huge IN (...) string,
+            # avoiding potential memory error.
+            use_temp_table = True
+            sqlite_cursor.execute("DROP TABLE IF EXISTS tmp_rsids")
+            sqlite_cursor.execute("CREATE TEMP TABLE tmp_rsids (varname TEXT PRIMARY KEY)")
+
+            batch_size = 100000
+            insert_sql = "INSERT OR IGNORE INTO tmp_rsids (varname) VALUES (?)"
+            for i in range(0, len(rsIDs), batch_size):
+                batch = rsIDs[i:i + batch_size]
+                sqlite_cursor.executemany(insert_sql, [(r,) for r in batch])
+            sqlite_connection.commit()
+
+            qcursor = sqlite_cursor.execute(
+                "SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles "
+                "FROM variant vlist "
+                "INNER JOIN tmp_rsids t ON vlist.varname = t.varname "
+                "LEFT JOIN variant_coords vc ON vlist.current_varname = vc.current_varname"
+            )
+        else:
+            # Use a regular IN clause for smaller lists of rsIDs.
+            qcursor = sqlite_cursor.execute(
+                "SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles FROM variant vlist "
+                "LEFT JOIN variant_coords vc ON vlist.current_varname = vc.current_varname WHERE vlist.varname IN {}"
+                .format(tuple(rsIDs)))
     else:
-        qcursor = sqlite_cursor.execute("SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles FROM variant vlist LEFT JOIN variant_coords vc ON vlist.current_varname = vc.current_varname")
+        qcursor = sqlite_cursor.execute(
+            "SELECT vlist.varname, vlist.current_varname, vc.chr, vc.start, vc.end, vc.alleles "
+            "FROM variant vlist "
+            "LEFT JOIN variant_coords vc ON vlist.current_varname = vc.current_varname"
+        )
 
     for line in qcursor:
         query_rsid, current_rsid, seq_region_name, start, end, allele_string = line
@@ -220,6 +230,10 @@ def parse_var2location(loc_var2location_db, rsIDs = None, catchAPI=True):
                                                                                'start': start,
                                                                                'end': end,
                                                                                'allele_string': allele_string}]})
+
+    if use_temp_table:
+        sqlite_cursor.execute("DROP TABLE IF EXISTS tmp_rsids")
+        sqlite_connection.commit()
 
     # Cleanup w/ ENSEMBL API
     if catchAPI is True:
