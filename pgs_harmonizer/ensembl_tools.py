@@ -231,4 +231,5 @@ def parse_var2location(loc_var2location_db, rsIDs = None, catchAPI=True):
             if len(mapping_ensembl) > 0:
                 results.update(mapping_ensembl)
 
+    sqlite_connection.close()
     return results
